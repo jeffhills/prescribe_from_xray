@@ -509,7 +509,7 @@ ui <- dashboardPage(
       "))
         )
           )
-          ),
+          ), 
         conditionalPanel(
           condition = "input.all_points_recorded == true",
           tags$head(
