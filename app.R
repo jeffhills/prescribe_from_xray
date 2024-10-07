@@ -20,7 +20,7 @@ library(lubridate)
 library(shinydashboard)
 library(magick)
 # library(ggforce)
-library(plotly)
+# library(plotly)
 
 source("jh_functions.R", local = TRUE)
 source("compute_segment_angles_function_from_sim_data_2024.R", local = TRUE)
@@ -509,7 +509,7 @@ ui <- dashboardPage(
       "))
         )
           )
-          ), 
+          ),  
         conditionalPanel(
           condition = "input.all_points_recorded == true",
           tags$head(
