@@ -22,6 +22,8 @@ library(magick)
 # library(ggforce)
 # library(plotly)
 
+options(shiny.maxRequestSize = 25*1024^2)
+
 source("jh_functions.R", local = TRUE)
 source("compute_segment_angles_function_from_sim_data_2024.R", local = TRUE)
 source("function_segment_angles_separated.R", local = TRUE)
@@ -233,7 +235,8 @@ ui <- dashboardPage(
     width: 50px;
   }
 ")),
-    fileInput("image", "Upload an Image", accept = c('image/png', 'image/jpeg', 'image/jpg')), 
+    # fileInput("image", "Upload an Image", accept = c('image/png', 'image/jpeg', 'image/jpg')), 
+    fileInput("image", "Upload an Image", accept = 'image/'), 
     br(), 
     conditionalPanel(
       condition = "input.xray_file_uploaded == true",
@@ -771,9 +774,19 @@ server <- function(input, output, session) {
   observeEvent(input$image, {
     req(input$image)
     
+    # img <- image_read(input$image$datapath)
+    img_scaled <- image_scale(image_read(input$image$datapath), "400x")  # Scale to 400px width
+    
+    # Write the scaled image to a temporary file
+    temp_file <- tempfile(fileext = ".jpg")
+    image_write(img_scaled, path = temp_file, format = "jpeg")
+    
+    # Encode the scaled image to base64
+    image_src <- base64enc::dataURI(file = temp_file, mime = "image/jpeg")
+    
     # Create a base64-encoded URI for the uploaded image
-    image_path <- input$image$datapath
-    image_src <- base64enc::dataURI(file = image_path, mime = input$image$type)
+    # image_path <- input$image$datapath
+    # image_src <- base64enc::dataURI(file = image_path, mime = input$image$type)
     
     # Send the image URI to the UI
     session$sendCustomMessage('load-image', list(src = image_src))
@@ -1166,7 +1179,9 @@ server <- function(input, output, session) {
   xray_reactive_plot <- reactive({
     # req(xray)  # Ensure there's a cached image
     if(xray_instructions_reactiveval() == "Completed"){
-      xray <- image_read(path = input$image$datapath)
+      # xray <- image_read(path = input$image$datapath)
+      
+      xray <- image_scale(image_read(path = input$image$datapath), "400x")
       
       xray_height <- image_info(xray)$height
       xray_width <- image_info(xray)$width
