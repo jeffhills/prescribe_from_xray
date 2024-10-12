@@ -1314,30 +1314,7 @@ server <- function(input, output, session) {
                                                                                 centroid_df = xray_centroid_coordinates_reactive_df(), 
                                                                                 spine_facing = spine_orientation())
       
-      # sup_endplates_list_df <-map(.x = spine_xr_build_list$spine_geom_list, .f = ~ clean_names(as_tibble(st_coordinates(.x)[1:2,1:2])) %>% mutate(endplate_points = rownames(st_coordinates(.x)[1:2,1:2])))
-      # 
-      # names(sup_endplates_list_df) <- str_replace_all(names(spine_xr_build_list$spine_geom_list), pattern = "geom", "superior_endplate")
-      # 
-      # sup_endplates_list_df <- map2(.x = sup_endplates_list_df, .y = names(sup_endplates_list_df), .f = ~ .x %>% mutate(spine_level = .y))
-      # 
-      # 
-      # sup_endplates_df <-tibble(spine_level = "s1_superior_endplate",
-      #                           sp_x = click_coord_reactive_list$coords$s1_posterior_superior$x,
-      #                           sp_y = click_coord_reactive_list$coords$s1_posterior_superior$y,
-      #                           sa_x = click_coord_reactive_list$coords$s1_anterior_superior$x,
-      #                           sa_y = click_coord_reactive_list$coords$s1_anterior_superior$y) %>%
-      #   union_all(bind_rows(sup_endplates_list_df) %>%
-      #   select(spine_level, endplate_points, x, y) %>%
-      #   filter(endplate_points == "sp") %>%
-      #   select(spine_level, sp_x = x, sp_y = y) %>%
-      #   left_join(bind_rows(sup_endplates_list_df) %>%
-      #               select(spine_level, endplate_points, x, y) %>%
-      #               filter(endplate_points == "sa") %>%
-      #               select(spine_level, sa_x = x, sa_y = y))
-      #   )
-      
-      
-      
+
       # xray_plot <-  ggdraw(xlim = c(0, xray_width), ylim = c(0, xray_height)) +
       xray_plot <- ggdraw() +
         draw_image(
@@ -1475,56 +1452,74 @@ server <- function(input, output, session) {
     rigid_levels
   })
   
+  spine_build_from_coordinates_reactive <- reactive({
+    if(any(names(click_coord_reactive_list$coords) == "c2_centroid")){
+    spine_build_list <- build_spine_from_coordinates_function(femoral_head_center = c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y), 
+                                                              s1_anterior_superior = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y), 
+                                                              s1_posterior_superior = c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y), 
+                                                              centroid_df = xray_centroid_coordinates_reactive_df(), 
+                                                              spine_facing = spine_orientation())
+    }
+    
+  })
+  
   output$preop_spine_simulation_plot <- renderPlot({
-    alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
-    if(any(names(alignment_parameters_list) == "c2pa")){
+    if(xray_instructions_reactiveval() == "Completed"){
+      alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
+      spine_build_list <- spine_build_from_coordinates_reactive()
       
-      if(any(names(click_coord_reactive_list$coords) == "c2_centroid")){
+      ggplot() +
+        geom_sf(data = spine_build_list$vert_geom_df,
+                color = "black",
+                aes(geometry = geometry), 
+                fill = "grey90", 
+                alpha = 0.8) +
+        geom_path(data =  spine_build_list$vert_geom_df, aes(x = x, y = y)) +
+        geom_sf(data = spine_build_list$fem_head_sf, 
+                fill = "grey90") +
+        geom_sf(data = spine_build_list$sacrum_sf, 
+                fill = "grey90", 
+                alpha = 0.8) +
+        geom_sf(data = spine_build_list$lines_list$l1pa, 
+                color = "blue")+
+        geom_sf(data = spine_build_list$lines_list$t9pa, 
+                color = "orange") +
+        geom_sf(data = spine_build_list$lines_list$t4pa, 
+                color = "purple") +
+        geom_sf(data = spine_build_list$lines_list$c2pa, 
+                color = "darkgreen") +
+        theme_void() +
+        labs(title = "Preop Alignment") +
+        theme(
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          plot.title = element_text(
+            size = 16,
+            hjust = 0.5,
+            vjust = -0.5,
+            face = "bold.italic"
+          ),
+          plot.background = element_rect(fill = "transparent", colour = NA),
+          panel.background = element_rect(fill = "transparent", colour = NA)
+        ) 
+        # geom_segment(data = spine_build_list$sup_endplates_df, aes(x = sp_x, y = sp_y, xend = sa_x, yend = sa_y), color = "red", linewidth = 1, lineend = "round") 
+      
+      
+      
+    }
+    
+    # if(any(names(alignment_parameters_list) == "c2pa")){
+      
+      # if(any(names(click_coord_reactive_list$coords) == "c2_centroid")){
         
         # xray_centroid_coordinates_reactive_df()
         
-        spine_build_list <- build_spine_from_coordinates_function(femoral_head_center = c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y), 
-                                                         s1_anterior_superior = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y), 
-                                                         s1_posterior_superior = c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y), 
-                                                         centroid_df = xray_centroid_coordinates_reactive_df(), 
-                                                         spine_facing = spine_orientation())
+        # spine_build_list <- build_spine_from_coordinates_function(femoral_head_center = c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y), 
+        #                                                  s1_anterior_superior = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y), 
+        #                                                  s1_posterior_superior = c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y), 
+        #                                                  centroid_df = xray_centroid_coordinates_reactive_df(), 
+        #                                                  spine_facing = spine_orientation())
         
-        
-        ggplot() +
-          geom_sf(data = spine_build_list$vert_geom_df,
-                  color = "black",
-                  aes(geometry = geometry), 
-                  fill = "grey90", 
-                  alpha = 0.8) +
-          geom_path(data =  spine_build_list$vert_geom_df, aes(x = x, y = y)) +
-          geom_sf(data = spine_build_list$fem_head_sf, 
-                  fill = "grey90") +
-          geom_sf(data = spine_build_list$sacrum_sf, 
-                  fill = "grey90", 
-                  alpha = 0.8) +
-          geom_sf(data = spine_build_list$lines_list[[1]], 
-                  color = "blue")+
-          geom_sf(data = spine_build_list$lines_list[[2]], 
-                  color = "purple") +
-          theme_void() +
-          labs(title = "Preop Alignment") +
-          theme(
-            axis.text = element_blank(),
-            axis.title = element_blank(),
-            plot.title = element_text(
-              size = 16,
-              hjust = 0.5,
-              vjust = -0.5,
-              face = "bold.italic"
-            ),
-            plot.background = element_rect(fill = "transparent", colour = NA),
-            panel.background = element_rect(fill = "transparent", colour = NA)
-          ) +
-          geom_segment(data = spine_build_list$sup_endplates_df, aes(x = sp_x, y = sp_y, xend = sa_x, yend = sa_y), color = "red", linewidth = 1, lineend = "round") 
-          
-        
-        
-      
         
         # spine_simulation_list <- build_full_spine_from_vertebral_pelvic_angles_function(pelv_inc_value = alignment_parameters_list$pelvic_incidence,
         #                                                                                 pt_value = alignment_parameters_list$pelvic_tilt,
@@ -1572,10 +1567,10 @@ server <- function(input, output, session) {
         #   scale_fill_identity() +
         #   scale_alpha_identity()+
         #   xlim(-30, 30)
-      } 
+      # } 
       # coord_fixed()
       
-    }
+    # }
     
     
   })
@@ -1584,6 +1579,8 @@ server <- function(input, output, session) {
   
   spine_plan_uiv_t11_option_1_xray <- eventReactive(input$compute_plan_xray, {
     alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
+    
+    spine_build_list <- spine_build_from_coordinates_reactive()
     
     build_t11_spine_plot_function(pso_option_number = 1, 
                                   preop_age = input$preop_age,
@@ -1597,7 +1594,7 @@ server <- function(input, output, session) {
                                   # l1pa_line_color = input$l1pa_line_color,
                                   # t4pa_line_color = input$t4pa_line_color,
                                   # c2pa_line_color = input$c2pa_line_color, 
-                                  # preop_segment_angles_input_list_reactive = xray_estimated_segment_angles_reactive_list(),
+                                  # preop_segment_angles_input_list_reactive = spine_build_list$segment_angles_list,
                                   preop_rigid_levels_vector_reactive = preop_rigid_levels_vector_reactive_xray(),
                                   return_list_or_plot = "list"
     )
@@ -1606,6 +1603,8 @@ server <- function(input, output, session) {
   
   spine_plan_uiv_t11_option_2_xray <- eventReactive(input$compute_plan_xray, {
     alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
+    
+    spine_build_list <- spine_build_from_coordinates_reactive()
     
     build_t11_spine_plot_function(pso_option_number = 2, 
                                   preop_age = input$preop_age,
@@ -1619,7 +1618,7 @@ server <- function(input, output, session) {
                                   # l1pa_line_color = input$l1pa_line_color,
                                   # t4pa_line_color = input$t4pa_line_color,
                                   # c2pa_line_color = input$c2pa_line_color, 
-                                  # preop_segment_angles_input_list_reactive = xray_estimated_segment_angles_reactive_list(),
+                                  # preop_segment_angles_input_list_reactive = spine_build_list$segment_angles_list,
                                   preop_rigid_levels_vector_reactive = preop_rigid_levels_vector_reactive_xray(), 
                                   return_list_or_plot = "list"
     )
@@ -1652,6 +1651,8 @@ server <- function(input, output, session) {
   
   spine_plan_uiv_t4_option_1_xray <- eventReactive(input$compute_plan_xray, {
     alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
+    spine_build_list <- spine_build_from_coordinates_reactive()
+    
     build_upper_t_uiv_spine_plot_function(pso_option_number = 1, 
                                           preop_age = input$preop_age,
                                           preop_sex = input$preop_sex,
@@ -1664,7 +1665,7 @@ server <- function(input, output, session) {
                                           # l1pa_line_color = input$l1pa_line_color,
                                           # t4pa_line_color = input$t4pa_line_color,
                                           # c2pa_line_color = input$c2pa_line_color, 
-                                          # preop_segment_angles_input_list_reactive = xray_estimated_segment_angles_reactive_list(),
+                                          # preop_segment_angles_input_list_reactive = spine_build_list$segment_angles_list,
                                           preop_rigid_levels_vector_reactive = preop_rigid_levels_vector_reactive_xray(),
                                           return_list_or_plot = "list"
     )
@@ -1674,6 +1675,8 @@ server <- function(input, output, session) {
   ############## PSO OPTION 2 UIV T4
   spine_plan_uiv_t4_option_2_xray <- eventReactive(input$compute_plan_xray, {
     alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
+    
+    spine_build_list <- spine_build_from_coordinates_reactive()
     
     build_upper_t_uiv_spine_plot_function(pso_option_number = 2, 
                                           preop_age = input$preop_age,
@@ -1687,7 +1690,7 @@ server <- function(input, output, session) {
                                           # l1pa_line_color = input$l1pa_line_color,
                                           # t4pa_line_color = input$t4pa_line_color,
                                           # c2pa_line_color = input$c2pa_line_color, 
-                                          # preop_segment_angles_input_list_reactive = xray_estimated_segment_angles_reactive_list(),
+                                          # preop_segment_angles_input_list_reactive = spine_build_list$segment_angles_list,
                                           preop_rigid_levels_vector_reactive = preop_rigid_levels_vector_reactive_xray(), #preop_rigid_levels_vector_reactive()
                                           return_list_or_plot = "list"
     )
