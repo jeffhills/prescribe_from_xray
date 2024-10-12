@@ -909,7 +909,7 @@ server <- function(input, output, session) {
     }
     
     # Debugging step to print the structure of click_coord_reactive_list$coords
-    print(str(click_coord_reactive_list$coords))
+    # print(str(click_coord_reactive_list$coords))
     
     # Convert the named list to a list of lists
     coords_for_js <- unname(lapply(click_coord_reactive_list$coords, function(coord) {
@@ -917,7 +917,7 @@ server <- function(input, output, session) {
     }))
     
     # Debugging step to print coords_for_js
-    print(coords_for_js)
+    # print(coords_for_js)
     
     plot_points_coordinates_reactiveval(coords_for_js)
     
@@ -1520,7 +1520,7 @@ server <- function(input, output, session) {
             plot.background = element_rect(fill = "transparent", colour = NA),
             panel.background = element_rect(fill = "transparent", colour = NA)
           ) +
-          geom_segment(data = spine_build_list$sup_endplates_df, aes(x = sp_x, y = sp_y, xend = sa_x, yend = sa_y), color = "red", size = 1, lineend = "round") 
+          geom_segment(data = spine_build_list$sup_endplates_df, aes(x = sp_x, y = sp_y, xend = sa_x, yend = sa_y), color = "red", linewidth = 1, lineend = "round") 
           
         
         
