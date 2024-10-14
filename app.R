@@ -684,6 +684,9 @@ ui <- dashboardPage(
         box(collapsible = TRUE, collapsed = TRUE,
             tableOutput(outputId = "click_coordinates_df"),
             br(),
+            textOutput(outputId = "click_coordinates_text"),
+            br(),
+            hr(),
             h4("Centroid Coordinates:"),
             tableOutput(outputId = "centroid_coordinates_df"), 
             br(), 
@@ -994,6 +997,31 @@ server <- function(input, output, session) {
     }
   })
   
+  output$click_coordinates_text <- renderText({
+    # click_coordinates_df_reactive()
+    
+    if (length(plot_points_coordinates_reactiveval()) > 0) {
+      # Convert the list to a tibble
+      s1_center <- jh_get_point_along_line_function(coord_a = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y), 
+                                       coord_b = c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y), 
+                                       percent_a_to_b = 0.5)
+      
+      click_df <- tibble(spine_point = "s1_center", x = s1_center[1], y = s1_center[2]) %>%
+        union_all(click_coordinates_df_reactive())
+
+        spine_point_labels <- glue_collapse(click_df$spine_point, sep = "', '")
+        
+        x_values <- glue_collapse(click_df$x, sep = ", ")
+        y_values <- glue_collapse(click_df$y, sep = ", ")
+        
+        glue("click_df <- tibble(spine_point = c('{spine_point_labels}'), x = c({x_values}), y = c({y_values}))")
+      
+      
+    } else {
+      glue("click_df <- tibble(spine_point)")
+    }
+  })
+  
 
   ############ COMPUTE CENTROIDS #################
   # Reactive tibble for centroid coordinates
@@ -1045,15 +1073,34 @@ server <- function(input, output, session) {
       
       l5_centroid_y_adjustment <- (spine_coordinates_short_df %>% filter(spine_point == "s1_center"))$y + ((spine_coordinates_short_df %>% filter(spine_point == "l4_centroid"))$y - (spine_coordinates_short_df %>% filter(spine_point == "s1_center"))$y)*0.35
       
-      spine_y_filled_df <- spine_coordinate_labels_df %>%
-        left_join(spine_coordinates_short_df) %>%
-        mutate(y = zoo::na.approx(y, rule = 2)) %>%
-        mutate(y = round(y, 3)) %>%
-        mutate(y = if_else(spine_point == "l5_centroid", l5_centroid_y_adjustment, y))
+      head_df <- spine_coordinates_short_df %>%
+        filter(spine_point == "c2_centroid") %>%
+        mutate(y = y*1.1) %>%
+        mutate(spine_point = "head") %>%
+        mutate(index_count = index_count + 1)
       
-
-      final_coords_df <- spine_y_filled_df %>%
-        mutate(x = spline(spine_coordinates_short_df$y, spine_coordinates_short_df$x, xout = spine_y_filled_df$y)$y) %>%
+      # spine_y_filled_df <- spine_coordinate_labels_df %>%
+      #   left_join(spine_coordinates_short_df) %>%
+      #   mutate(y = zoo::na.spline(y)) %>%
+      #   # mutate(y = zoo::na.approx(y, rule = 2)) %>%
+      #   mutate(y = round(y, 3)) %>%
+      #   mutate(y = if_else(spine_point == "l5_centroid", l5_centroid_y_adjustment, y))
+      # 
+      # 
+      # final_coords_df <- spine_y_filled_df %>%
+      #   # mutate(x = spline(spine_coordinates_short_df$y, spine_coordinates_short_df$x, xout = spine_y_filled_df$y)$y) %>%
+      #   mutate(x = zoo::na.spline(x))%>%
+      #   select(spine_point, x, y) %>%
+      #   mutate(x = round(x, 3))
+      
+      final_coords_df <- spine_coordinate_labels_df %>%
+        left_join(spine_coordinates_short_df) %>%
+        union_all(head_df) %>%
+        mutate(x = zoo::na.spline(x))%>%
+        filter(spine_point != "head") %>%
+        mutate(y = zoo::na.spline(y)) %>%
+        mutate(y = round(y, 3)) %>%
+        mutate(y = if_else(spine_point == "l5_centroid", l5_centroid_y_adjustment, y)) %>%
         select(spine_point, x, y) %>%
         mutate(x = round(x, 3))
       
@@ -1473,7 +1520,11 @@ server <- function(input, output, session) {
                 color = "black",
                 aes(geometry = geometry), 
                 fill = "grey90", 
-                alpha = 0.8) +
+                alpha = 0.9) +
+        geom_sf(data = spine_build_list$spine_geom_list$c1_geom, 
+                # fill = "grey90", 
+                fill = "grey90",
+                alpha = 0.5) +
         geom_path(data =  spine_build_list$vert_geom_df, aes(x = x, y = y)) +
         geom_sf(data = spine_build_list$fem_head_sf, 
                 fill = "grey90") +
