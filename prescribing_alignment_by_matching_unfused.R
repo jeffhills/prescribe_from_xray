@@ -866,8 +866,13 @@ build_t11_spine_plot_function <- function(pso_option_number = 1,
     
     prescribed_plan_list$regional_targets <- alignment_targets_df
     
+    prescribed_plan_list$alignment_measures_df <- measurements_df
     if(pso_level != "na"){
-      prescribed_plan_list$pso_level <- paste(pso_level)
+      if(length(pso_level)>1){
+        prescribed_plan_list$pso_level <- paste(glue_collapse(pso_level, sep = " & "))
+      }else{
+        prescribed_plan_list$pso_level <- paste(pso_level)
+      }
     }else{
       prescribed_plan_list$pso_level <- "none"
     }
@@ -1613,8 +1618,10 @@ build_upper_t_uiv_spine_plot_function <- function(pso_option_number = 1,
     
     prescribed_plan_list$regional_targets <- alignment_targets_df
     
+    prescribed_plan_list$alignment_measures_df <- measurements_df
     if(length(pso_list) > 0){
-      prescribed_plan_list$pso_level <- str_to_upper(as_vector(pso_list))
+      prescribed_plan_list$pso_level <-  glue_collapse(str_to_upper(as_vector(pso_list)), sep = " & ")
+      # prescribed_plan_list$pso_level <- str_to_upper(as_vector(pso_list))
     }else{
       prescribed_plan_list$pso_level <- "none"
     }
