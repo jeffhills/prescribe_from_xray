@@ -223,100 +223,35 @@ ui <- dashboardPage(
     )
     ),
     br(),
-    textInput(inputId = "redcap_token_password",
-              label = "Redcap Password:",
-              placeholder = "#Enter Redcap Passphrase#",
-              value = "hills"),
-    conditionalPanel(
-      condition = "input.redcap_token_correct = true",  # JavaScript condition
-      actionBttn(inputId = "get_next_redcap_id_button", label = "Get next redcap ID", style = "pill",size = "sm"),
-      fluidRow(
-        column(width = 8, 
-               htmlOutput(outputId = "next_redcap_record_id_needed"), 
-               htmlOutput(outputId = "next_10_redcap_record_id_needed")
-               ),
-        column(width = 4, 
-               actionBttn(inputId = "search_for_retrieved_next_record_button", label = "Go", icon = icon("arrow-right"), style = "pill", size = "md"))
-      )
-      
-    ),
-    conditionalPanel(
-      condition = "input.redcap_token_correct = true",  # JavaScript condition
-      sidebarSearchForm(textId = "redcap_record_id",
-                        buttonId = "get_redcap_data_button",
-                        label = "Image Record ID")
-    ),
-    conditionalPanel(
-      condition = "input.redcap_token_correct = true",  # JavaScript condition
-      fluidRow(
-        column(width = 6, 
-               switchInput(inputId = "record_calibration_measure", label = "Calibration?", value = TRUE, size = "mini")
-        ),
-        column(width = 6, 
-               actionBttn(inputId = "calibrate_button", label = "Calibrate", size = "sm", style = "fill")
-        )
-      )
-    ),
-    tableOutput(outputId = "redcap_measures_table"),
-    # fluidRow(
-    #   box(title = "Recording Alignment:",width = 12,
-    #       div(
-    #         style = "font-size: 14px; color: black", 
-    #         fluidRow(
-              # textInput(inputId = "redcap_token_password",
-              #           label = "Redcap Password:",
-              #           placeholder = "#Enter Redcap Passphrase#",
-              #           value = "")
-    #         ),
-    #         hr(),
-    #         fluidRow(
-    #           conditionalPanel(
-    #             condition = "input.redcap_token_correct = true",  # JavaScript condition
-    #             # textInput(inputId = "redcap_record_id",label =  "Record ID:")
-    #             sidebarSearchForm(textId = "redcap_record_id",
-    #                               buttonId = "get_redcap_data_button",
-    #                               label = "Redcap Record ID")
-    #           )
-    #         ),
-    #         fluidRow(
-    #           # actionBttn(inputId = "get_redcap_data_button", label = "Get Redcap data"),
-    #           tableOutput(outputId = "redcap_measures_table")
-    #         )
-    #         )
-    #     )
-    # ),
     fluidRow(
-     box(title = "Surgical Planning: (not currently enabled)",
-         width = 12, 
-         collapsible = TRUE, 
-         collapsed = TRUE, 
-        conditionalPanel(
-      condition = "input.xray_file_uploaded == true",
-      h4(strong("Patient Factors:")),
-      sliderInput(
-        "preop_age",
-        "Patient Age:",
-        min = 18,
-        max = 90,
-        value = 60
-      ),
-      radioGroupButtons(
-        inputId = "preop_sex",
-        label = NULL,
-        individual = TRUE,
-        choices = c("Male", "Female"),
-        selected = "Female",
-        checkIcon = list(
-          yes = tags$i(class = "fa fa-check-square", 
-                       style = "color: steelblue"),
-          no = tags$i(class = "fa fa-square-o", 
-                      style = "color: steelblue"))
-      ),
-      hr(),
-      
-    uiOutput(outputId = "preop_xray_rigid_segments_ui")
-    )
-    ) 
+      box(title = "Surgical Planning:", status = "info", width = 12, collapsible = FALSE,
+          conditionalPanel(
+            condition = "input.xray_file_uploaded == true",
+            h4(strong("Patient Factors:")),
+            sliderInput(
+              "preop_age",
+              "Patient Age:",
+              min = 18,
+              max = 90,
+              value = 60
+            ),
+            radioGroupButtons(
+              inputId = "preop_sex",
+              label = NULL,
+              individual = TRUE,
+              choices = c("Male", "Female"),
+              selected = "Female",
+              checkIcon = list(
+                yes = tags$i(class = "fa fa-check-square", 
+                             style = "color: steelblue"),
+                no = tags$i(class = "fa fa-square-o", 
+                            style = "color: steelblue"))
+            ),
+            hr(),
+            
+            uiOutput(outputId = "preop_xray_rigid_segments_ui")
+          )
+          )
     ),
     div(
       style = "display: none;",  # Hide the entire div, including the switch
@@ -356,11 +291,17 @@ ui <- dashboardPage(
     ),
     # Boxes need to be put in a row (or column)
     fluidRow(
-      conditionalPanel(
-        "input.all_points_recorded == true",
-        actionBttn(inputId = "upload_to_redcap", label = "Upload Coordinates to Redcap", icon = icon("upload"), style = "jelly", color = "primary", size = "md")
-      ),
-      box(width = 3,
+      # conditionalPanel(
+      #   "input.all_points_recorded == true",
+      #   hr()
+      # ),
+      
+      ########## MAIN PAGE COLUMN 1 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 1 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 1 STARTS HERE: ##############
+      
+      column(width = 3, 
+      box(width = 12,
           conditionalPanel(
             condition = "input.xray_file_uploaded == true",
             fluidRow(
@@ -386,7 +327,6 @@ ui <- dashboardPage(
             ),
           conditionalPanel(
             condition = "input.xray_file_uploaded == true & input.all_points_recorded == false",
-            # condition = "input.xray_file_uploaded == true",
           fluidRow(
             column(width = 12, 
                    tags$div(
@@ -766,11 +706,24 @@ ui <- dashboardPage(
         #   )
         # )
         )
+      )
       ),
-      box(width = 3, 
-          tableOutput(outputId = "spine_click_parameters")
-          ),
-      column(width = 2, 
+      
+      ########## MAIN PAGE COLUMN 2 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 2 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 2 STARTS HERE: ##############
+      
+      # column(width = 3, 
+      #        box(width = 12,
+      #            tableOutput(outputId = "spine_click_parameters")
+      #        )
+      #        ),
+      
+      ########## MAIN PAGE COLUMN 3 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 3 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 3 STARTS HERE: ##############
+      
+      column(width = 4, 
              conditionalPanel(
         condition = "input.all_points_recorded == true",
         box(title = "Preop Alignment:", 
@@ -793,33 +746,39 @@ ui <- dashboardPage(
             )
       )
       ),
-      conditionalPanel(
-        condition = "input.all_points_recorded == true",
-      box(width = 4,
-        # title = "Plans",
-        actionBttn(
-          inputId = "compute_plan_xray",
-          label = "Compute Plan",
-          style = "unite", 
-          color = "danger"
-        ),
-        hr(),
-        fluidRow(
-          tabBox(width = 12,
-            title = div(style = "float: right;", "Alignment Plans"),  # Moves title to the right
-            id = "alignment_plans", 
-            tabPanel("Lower T UIV", 
-                     # plotOutput(outputId = "spine_plan_lower_t_xray", height = 650), 
-                     uiOutput(outputId = "spine_plan_lower_t_ui")
-            ),
-            tabPanel("Upper T UIV", 
-                     # plotOutput(outputId = "spine_plan_upper_t_xray", height = 650),
-                     uiOutput(outputId = "spine_plan_upper_t_ui")
-            )
-          )
-        )
-      )
-      )
+      ########## MAIN PAGE COLUMN 4 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 4 STARTS HERE: ##############
+      ########## MAIN PAGE COLUMN 4 STARTS HERE: ##############
+      
+      column(width = 5,
+               conditionalPanel(
+                 condition = "input.all_points_recorded == true",
+                 box(width = 12,
+                     # title = "Plans",
+                     actionBttn(
+                       inputId = "compute_plan_xray",
+                       label = "Compute Plan",
+                       style = "unite", 
+                       color = "danger"
+                     ),
+                     hr(),
+                     fluidRow(
+                       tabBox(width = 12,
+                              title = div(style = "float: right;", "Alignment Plans"),  # Moves title to the right
+                              id = "alignment_plans", 
+                              tabPanel("Lower T UIV", 
+                                       # plotOutput(outputId = "spine_plan_lower_t_xray", height = 650), 
+                                       uiOutput(outputId = "spine_plan_lower_t_ui")
+                              ),
+                              tabPanel("Upper T UIV", 
+                                       # plotOutput(outputId = "spine_plan_upper_t_xray", height = 650),
+                                       uiOutput(outputId = "spine_plan_upper_t_ui")
+                              )
+                       )
+                     )
+                 )
+               )
+             )
     )
   )
 )
@@ -1114,10 +1073,12 @@ server <- function(input, output, session) {
       print("correct instructions")
       
     } else {
-      print("inccorrect instructions")
+      # print("inccorrect instructions")
       
       instruction <- "All points recorded."
       xray_instructions_reactiveval("Completed")
+      
+      # print(paste(xray_instructions_reactiveval()))
     }
 
     HTML("<div>", instruction, "</div>")
@@ -1379,136 +1340,41 @@ server <- function(input, output, session) {
     
   })
   
-  # observeEvent(click_coord_reactive_list$coords, ignoreInit = TRUE, {
-  #   
-  #   click_count <- length(click_coord_reactive_list$coords)
-  #   # if(nrow(actively_computing_parameters_reactive_list$alignment_df)>0){
-  #   if(click_count > 2 & nrow(actively_computing_parameters_reactive_list$alignment_df)>0){
-  #     if(nrow(imported_redcap_data$cleaned_df)>0 & any(names(imported_redcap_data$cleaned_df) == "value")){
+ 
+  # observeEvent(input$c2_centroid_s1_center_length, ignoreInit = TRUE, {
+  #   if(imported_redcap_data$pelvic_thickness_value_for_qc_check != 0 & as.double(input$c2_centroid_s1_center_length) > 250 & input$all_points_recorded){
   # 
-  #       data_unformatted <- actively_computing_parameters_reactive_list$alignment_df %>%
-  #         left_join(imported_redcap_data$cleaned_df %>%
-  #                     mutate(redcap_val = value) %>%
-  #                     select(measure, redcap_val)) %>%
-  #         mutate(error = round(value - redcap_val, 2))
+  #     c2_sacrum_xy_pixel_dist <- xray_centroid_coordinates_reactive_df() %>%
+  #       filter(spine_point %in% c("s1_center", "c2_centroid")) %>%
+  #       mutate(point_coord = map2(.x = x, .y = y, .f = ~ c(.x, .y))) %>%
+  #       select(spine_point, point_coord) %>%
+  #       pivot_wider(names_from = spine_point, values_from = point_coord) %>%
+  #       mutate(c2_sacrum_xy_dist = map2(.x = s1_center, .y = c2_centroid,
+  #                                       .f = ~ jh_calculate_distance_between_2_points_function(point_1 = .x, point_2 = .y))) %>%
+  #       unnest(c2_sacrum_xy_dist) %>%
+  #       pull(c2_sacrum_xy_dist)
   # 
-  #       pi_error_df <- data_unformatted %>%
-  #         filter(measure == "PI") %>%
-  #         filter(abs(error) > 1.5)
+  #     scaling_factor <-  as.double(input$c2_centroid_s1_center_length)/c2_sacrum_xy_pixel_dist
   # 
-  #       if(nrow(pi_error_df)>0){
-  #         recorded_pi <- (data_unformatted %>% filter(measure == "PI"))$redcap_val
+  #     fem_head_center_scaled <- c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y)*scaling_factor
   # 
-  #         pelvic_thickness <- exportRecordsTyped(rcon = rcon_reactive$rcon, records = input$redcap_record_id,
-  #                                         fields = "pelvic_thickness")%>%
-  #           as_tibble() %>%
-  #           type.convert()
+  #     s1_center_scaled <- c((click_coord_reactive_list$coords$s1_anterior_superior$x + click_coord_reactive_list$coords$s1_posterior_superior$x)/2,
+  #                    (click_coord_reactive_list$coords$s1_anterior_superior$y + click_coord_reactive_list$coords$s1_posterior_superior$y)/2)*scaling_factor
   # 
-  #         # fem_head_center <- c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y)
-  #         s1_post_sup_corner <- c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y)
-  #         s1_ant_sup_corner <- c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y)
-  #         s1_midpoint <- jh_get_point_along_line_function(coord_a = s1_ant_sup_corner,
-  #                                                         coord_b = s1_post_sup_corner,
-  #                                                         percent_a_to_b = 0.5)
+  #     pelvic_thickness_scaled_computed <- jh_calculate_distance_between_2_points_function(point_1 = fem_head_center_scaled, point_2 = s1_center_scaled)
   # 
-  #         inf_sacrum_vec <- jh_find_sacrum_inf_point_function(s1_posterior_sup = s1_post_sup_corner,
-  #                                           s1_anterior_sup = s1_ant_sup_corner,
-  #                                           spine_facing = spine_orientation())
+  #     measurement_error_reactivevalues$pelvic_thickness_error_value <- round(pelvic_thickness_scaled_computed - imported_redcap_data$pelvic_thickness_value_for_qc_check, 1)
   # 
-  # 
-  #         new_fem_head_coordinates <- jh_find_fem_head_center_given_pi_and_thickness_function(inf_sacrum = inf_sacrum_vec,
-  #                                                                 s1_center = s1_midpoint,
-  #                                                                 length_s1_fem = pelvic_thickness$pelvic_thickness,
-  #                                                                 angle_deg = recorded_pi)
-  # 
-  #         click_coord_reactive_list$coords$fem_head_center$x <- new_fem_head_coordinates[1]
-  #         click_coord_reactive_list$coords$fem_head_center$y <- new_fem_head_coordinates[2]
-  # 
-  #       }
-  # 
-  # 
-  #     }
+  #   }else{
+  #     measurement_error_reactivevalues$pelvic_thickness_error_value <- 99
   #   }
+  # 
   # })
   
   
-  measurement_error_reactivevalues <- reactiveValues(error_over_2 = TRUE, 
-                                                     error_df = tibble(),
-                                                     pelvic_thickness_error_value = 99
-                                                     )
-  
-  
-  
-  observe({
-    if(nrow(actively_computing_parameters_reactive_list$alignment_df)>0){
-      
-      if(nrow(imported_redcap_data$cleaned_df)>0 & any(names(imported_redcap_data$cleaned_df) == "value")){
-        
-        data_unformatted <- actively_computing_parameters_reactive_list$alignment_df %>%
-          left_join(imported_redcap_data$cleaned_df %>%
-                      mutate(redcap_val = value) %>%
-                      select(measure, redcap_val)) %>%
-          mutate(error = round(value - redcap_val, 2)) %>%
-          select('Par' = measure, val = value, rec_val = redcap_val, error) 
-        
-        if(any(abs(data_unformatted$error) > 2)){
-          measurement_error_reactivevalues$error_over_2 <- TRUE
-        }else{
-          measurement_error_reactivevalues$error_over_2 <- FALSE
-        }
-        
-        threshold <- 2
-        
-        # Apply formatting to the 'error' column based on the value
-        data_unformatted$formatted_error <- ifelse(abs(data_unformatted$error) > threshold,
-                                                   paste0('<span style="color:red; font-weight:bold;">', data_unformatted$error, '</span>'),
-                                                   as.character(data_unformatted$error))
-        
-        # Remove original 'error' column and replace with formatted column
-        error_formatted_red_df <- data_unformatted
-        error_formatted_red_df$error <- error_formatted_red_df$formatted_error
-        error_formatted_red_df$formatted_error <- NULL
-        # error_formatted_red_df
-        measurement_error_reactivevalues$error_df <- error_formatted_red_df
-      }
-    }
-    
-  })
-  
-  observeEvent(input$c2_centroid_s1_center_length, ignoreInit = TRUE, {
-    if(imported_redcap_data$pelvic_thickness_value_for_qc_check != 0 & as.double(input$c2_centroid_s1_center_length) > 250 & input$all_points_recorded){
-
-      c2_sacrum_xy_pixel_dist <- xray_centroid_coordinates_reactive_df() %>%
-        filter(spine_point %in% c("s1_center", "c2_centroid")) %>%
-        mutate(point_coord = map2(.x = x, .y = y, .f = ~ c(.x, .y))) %>%
-        select(spine_point, point_coord) %>%
-        pivot_wider(names_from = spine_point, values_from = point_coord) %>%
-        mutate(c2_sacrum_xy_dist = map2(.x = s1_center, .y = c2_centroid,
-                                        .f = ~ jh_calculate_distance_between_2_points_function(point_1 = .x, point_2 = .y))) %>%
-        unnest(c2_sacrum_xy_dist) %>%
-        pull(c2_sacrum_xy_dist)
-
-      scaling_factor <-  as.double(input$c2_centroid_s1_center_length)/c2_sacrum_xy_pixel_dist
-
-      fem_head_center_scaled <- c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y)*scaling_factor
-
-      s1_center_scaled <- c((click_coord_reactive_list$coords$s1_anterior_superior$x + click_coord_reactive_list$coords$s1_posterior_superior$x)/2,
-                     (click_coord_reactive_list$coords$s1_anterior_superior$y + click_coord_reactive_list$coords$s1_posterior_superior$y)/2)*scaling_factor
-
-      pelvic_thickness_scaled_computed <- jh_calculate_distance_between_2_points_function(point_1 = fem_head_center_scaled, point_2 = s1_center_scaled)
-
-      measurement_error_reactivevalues$pelvic_thickness_error_value <- round(pelvic_thickness_scaled_computed - imported_redcap_data$pelvic_thickness_value_for_qc_check, 1)
-
-    }else{
-      measurement_error_reactivevalues$pelvic_thickness_error_value <- 99
-    }
-
-  })
-  
-  
-  output$spine_click_parameters <- renderTable({
-    measurement_error_reactivevalues$error_df
-  }, sanitize.text.function = function(x) x)
+  # output$spine_click_parameters <- renderTable({
+  #   measurement_error_reactivevalues$error_df
+  # }, sanitize.text.function = function(x) x)
   
   observeEvent(list(input$xray_click,
                     spine_orientation()), ignoreInit = TRUE, {
@@ -1684,34 +1550,38 @@ server <- function(input, output, session) {
   
   observeEvent(xray_instructions_reactiveval(), ignoreInit = TRUE, {
     if(xray_instructions_reactiveval() == "Completed"){
-    updateSwitchInput(session = session, inputId = "all_points_recorded", value = TRUE)
+    updateSwitchInput(session = session, 
+                      inputId = "all_points_recorded", 
+                      value = TRUE)
     }else{
-      updateSwitchInput(session = session, inputId = "all_points_recorded", value = FALSE)
+      updateSwitchInput(session = session, 
+                        inputId = "all_points_recorded", 
+                        value = FALSE)
       }
   })
   
 
   
   
-  observeEvent(list(xray_instructions_reactiveval(), input$calibrate_button), ignoreInit = TRUE, {
-    c2_centroid_s1_center_length_modal_function <- function(c2_centroid_s1_center_length = 0){
-      modalDialog(footer = "Redcap Upload", easyClose = TRUE,  size = "l",  
-                  box(width = 12, title = "Upload Data to Redcap", footer = NULL, 
-                      fluidRow(
-                        textInput(inputId = "c2_centroid_s1_center_length", 
-                                  label = "Enter C2-centroid to S1 center Length:",
-                                  value = c2_centroid_s1_center_length)
-                      )
-                  )
-      )
-    }
-    
-      if(input$record_calibration_measure){
-        showModal(
-          c2_centroid_s1_center_length_modal_function(c2_centroid_s1_center_length = input$c2_centroid_s1_center_length)
-        ) 
-      }
-  })
+  # observeEvent(list(xray_instructions_reactiveval()), ignoreInit = TRUE, {
+  #   c2_centroid_s1_center_length_modal_function <- function(c2_centroid_s1_center_length = 0){
+  #     modalDialog(footer = "Redcap Upload", easyClose = TRUE,  size = "l",  
+  #                 box(width = 12, title = "Upload Data to Redcap", footer = NULL, 
+  #                     fluidRow(
+  #                       textInput(inputId = "c2_centroid_s1_center_length", 
+  #                                 label = "Enter C2-centroid to S1 center Length:",
+  #                                 value = c2_centroid_s1_center_length)
+  #                     )
+  #                 )
+  #     )
+  #   }
+  #   
+  #     if(input$record_calibration_measure){
+  #       showModal(
+  #         c2_centroid_s1_center_length_modal_function(c2_centroid_s1_center_length = input$c2_centroid_s1_center_length)
+  #       ) 
+  #     }
+  # })
 
   spine_build_list_reactivevalues <- reactiveValues(spine_build_list = list())
   
@@ -2081,6 +1951,7 @@ server <- function(input, output, session) {
       
 
       if(length(spine_build_list)>0){
+        
         ggplot() +
         geom_sf(data = st_sfc(spine_build_list$vert_geom_list), 
                 color = "black",
@@ -2442,330 +2313,66 @@ server <- function(input, output, session) {
   
   
 
-redcap_tables <- reactiveValues()
+# redcap_tables <- reactiveValues()
   
-observeEvent(input$upload_to_redcap, ignoreInit = TRUE, {
-  redcap_tables$spine_coordinates_df <-   tibble(spine_level = "femoral_heads", 
-           vert_point = "center", 
-           x = click_coord_reactive_list$coords$fem_head_center$x[1], 
-           y = click_coord_reactive_list$coords$fem_head_center$y[1]) %>%
-    union_all(spine_build_list_reactivevalues$spine_build_list$spine_coord_df)    %>%
-    select(spine_level_coord = spine_level, vert_point_coord = vert_point, x_coord = x, y_coord = y) %>%
-    mutate(redcap_repeat_instance = row_number()) %>%
-    mutate(spine_coordinates_complete = "Complete")
-  
-  redcap_tables$spine_calibration <- tibble(c2_centroid_s1_center_length = input$c2_centroid_s1_center_length, 
-                                            spine_calibration_complete = "Complete")
-  
-})
+# observeEvent(input$upload_to_redcap, ignoreInit = TRUE, {
+#   redcap_tables$spine_coordinates_df <-   tibble(spine_level = "femoral_heads", 
+#            vert_point = "center", 
+#            x = click_coord_reactive_list$coords$fem_head_center$x[1], 
+#            y = click_coord_reactive_list$coords$fem_head_center$y[1]) %>%
+#     union_all(spine_build_list_reactivevalues$spine_build_list$spine_coord_df)    %>%
+#     select(spine_level_coord = spine_level, vert_point_coord = vert_point, x_coord = x, y_coord = y) %>%
+#     mutate(redcap_repeat_instance = row_number()) %>%
+#     mutate(spine_coordinates_complete = "Complete")
+#   
+#   redcap_tables$spine_calibration <- tibble(c2_centroid_s1_center_length = input$c2_centroid_s1_center_length, 
+#                                             spine_calibration_complete = "Complete")
+#   
+# })
   
 
-  output$spine_coord_output <- renderTable({
-    
-    if(measurement_error_reactivevalues$error_over_2){
-      measurement_error_reactivevalues$error_df
-    }else{
-      if(length(spine_build_list_reactivevalues$spine_build_list)>1){
-        redcap_tables$spine_coordinates_df 
-      } 
-    }
-  }, sanitize.text.function = function(x) x)
+  # output$spine_coord_output <- renderTable({
+  #   
+  #   if(measurement_error_reactivevalues$error_over_2){
+  #     measurement_error_reactivevalues$error_df
+  #   }else{
+  #     if(length(spine_build_list_reactivevalues$spine_build_list)>1){
+  #       redcap_tables$spine_coordinates_df 
+  #     } 
+  #   }
+  # }, sanitize.text.function = function(x) x)
   
-  output$spine_coord_for_redcap_plot <- renderPlot({
-    
-    if(length(spine_build_list_reactivevalues$spine_build_list)>1){
-      spine_coord_indexed_df <- spine_build_list_reactivevalues$spine_build_list$spine_coord_df %>%
-        select(spine_level) %>%
-        distinct() %>%
-        mutate(spine_index = row_number()) %>%
-        left_join(spine_build_list_reactivevalues$spine_build_list$spine_coord_df)%>%
-        filter(vert_point %in% c("sp", "sa", "ia", "ip"))  %>%
-        group_by(spine_level) %>%
-        mutate(vert_point_index = row_number()) %>%
-        ungroup()
-      
-      spine_coord_indexed_for_plotting_df <- spine_coord_indexed_df %>%
-        filter(vert_point == "sp") %>%
-        mutate(vert_point_index = 5) %>%
-        union_all(spine_coord_indexed_df) %>%
-        arrange(spine_index, vert_point_index) %>%
-        select(spine_level, vert_point, x, y)
-    
-      spine_coord_indexed_for_plotting_df %>%
-        group_by(spine_level) %>%
-        ggplot() + 
-        geom_path(aes(x = x, y = y, group = spine_level)) +
-        coord_fixed() +
-        theme_void() +
-        labs(title = "Spine Coordinates")
-    }
-  })
-  
-  observeEvent(input$upload_to_redcap, {
-    print(measurement_error_reactivevalues$error_over_2)
-    if(measurement_error_reactivevalues$error_over_2){
-      showModal(
-        modalDialog(footer = "Redcap Upload", easyClose = TRUE,  size = "l",  
-                    box(width = 12, title = "Error in Measurements", footer = NULL, 
-                        fluidRow(
-                          h4("Error in measurements below exceed acceptable value.\nPlease adjust centroids or restart."),
-                          tableOutput(outputId = "spine_coord_output")
-                        )
-                    )
-        )
-      )
-    }else if(abs(measurement_error_reactivevalues$pelvic_thickness_error_value)>10){
-      showModal(
-        modalDialog(footer = "Redcap Upload", easyClose = TRUE,  size = "l",  
-                    box(width = 12, title = "Error in Calibration Value", footer = NULL, 
-                        fluidRow(
-                          h4("The recorded calibration measure is inconsistent with the redcap value."),
-                          hr(),
-                          h4(glue("Pelvic thickness (S1 center to fem heads) error based on current calibration = {measurement_error_reactivevalues$pelvic_thickness_error_value}mm")),
-                          hr(),
-                          h3("Double Check the calibration line is from C2 to S1 center, and is entered correctly.")
-                        )
-                    )
-        )
-      )
-      
-      }else{
-      showModal(
-        modalDialog(footer = "Redcap Upload", easyClose = TRUE,  size = "l",  
-                    box(width = 12, title = "Upload Data to Redcap", footer = NULL, 
-                        fluidRow(
-                          column(6, 
-                                 conditionalPanel(
-                                   condition = "input.redcap_record_id.length > 0",  # JavaScript condition
-                                   tableOutput(outputId = "spine_coord_output")
-                                 )
-                          ),
-                          column(6, 
-                                 conditionalPanel(
-                                   condition = "input.redcap_record_id.length > 0",  # JavaScript condition
-                                   plotOutput(outputId = "spine_coord_for_redcap_plot")
-                                 )
-                          )
-                        ),
-                        fluidRow(
-                          conditionalPanel(
-                            condition = "input.redcap_record_id.length > 0",  # JavaScript condition
-                            actionBttn(inputId = "confirm_upload_final",
-                                       label = "Confirmed, Upload to Redcap",
-                                       style = "simple", color = "primary")
-                          )
-                        ),
-                        br(),
-                        textOutput(outputId = "redcap_upload_status"),
-                        div(
-                          style = "display: none;",  # Hide the entire div, including the switch
-                          switchInput(
-                            inputId = "redcap_token_correct",
-                            size = "mini", label = NULL,
-                            value = FALSE, 
-                            onLabel = "Y", 
-                            offLabel = "N",
-                          )
-                        )
-                    )
-        )
-        
-      ) 
-    }
-  })
-  
-  observeEvent(input$redcap_token_password, ignoreInit = TRUE, {
-    
-    if(str_to_lower(input$redcap_token_password) == "hills"){
-      updateSwitchInput(session = session, inputId = "redcap_token_correct", value = TRUE)
-    }
-    
-    
-  })
-  
-  
-  rcon_reactive <- reactiveValues(rcon = " ")
-  
-  # observeEvent(input$redcap_token_password, ignoreInit = TRUE, {
-  #   if(str_to_lower(input$redcap_token_password) == "hills"){
-  #     redcap_token <- "6DDC3E7AB46DC526ECF3F1A366A4A7DD"
-  #     redcap_url <-  'https://redcap.uthscsa.edu/REDCap/api/'
-  #     rcon_reactive$rcon <- redcapConnection(url = redcap_url, token = redcap_token, config =  httr::config(ssl_verifypeer = FALSE))     
+  # output$spine_coord_for_redcap_plot <- renderPlot({
+  #   
+  #   if(length(spine_build_list_reactivevalues$spine_build_list)>1){
+  #     spine_coord_indexed_df <- spine_build_list_reactivevalues$spine_build_list$spine_coord_df %>%
+  #       select(spine_level) %>%
+  #       distinct() %>%
+  #       mutate(spine_index = row_number()) %>%
+  #       left_join(spine_build_list_reactivevalues$spine_build_list$spine_coord_df)%>%
+  #       filter(vert_point %in% c("sp", "sa", "ia", "ip"))  %>%
+  #       group_by(spine_level) %>%
+  #       mutate(vert_point_index = row_number()) %>%
+  #       ungroup()
+  #     
+  #     spine_coord_indexed_for_plotting_df <- spine_coord_indexed_df %>%
+  #       filter(vert_point == "sp") %>%
+  #       mutate(vert_point_index = 5) %>%
+  #       union_all(spine_coord_indexed_df) %>%
+  #       arrange(spine_index, vert_point_index) %>%
+  #       select(spine_level, vert_point, x, y)
+  #   
+  #     spine_coord_indexed_for_plotting_df %>%
+  #       group_by(spine_level) %>%
+  #       ggplot() + 
+  #       geom_path(aes(x = x, y = y, group = spine_level)) +
+  #       coord_fixed() +
+  #       theme_void() +
+  #       labs(title = "Spine Coordinates")
   #   }
   # })
-  observe({
-    if(str_to_lower(input$redcap_token_password) == "hills"){
-      redcap_token <- "6DDC3E7AB46DC526ECF3F1A366A4A7DD"
-      redcap_url <-  'https://redcap.uthscsa.edu/REDCap/api/'
-      rcon_reactive$rcon <- redcapConnection(url = redcap_url, token = redcap_token, config =  httr::config(ssl_verifypeer = FALSE))     
-    }
-  })
   
-  next_redcap_record_id_needed_reactiveval <- reactiveValues(next_redcap_record = "", 
-                                                             next_10_redcap_records = "")
-  
-  observeEvent(input$get_next_redcap_id_button, ignoreInit = TRUE, {
-    
-    last_completed_id <- exportRecordsTyped(rcon = rcon_reactive$rcon) %>%
-      filter(spine_coordinates_complete == "Complete") %>%
-      as_tibble() %>%
-      select(record_id) %>%
-      distinct() %>%
-      mutate(record_id = as.character(record_id)) %>%
-      tail(1) %>%
-      pull(record_id)
 
-    all_recs_df <- exportRecordsTyped(rcon = rcon_reactive$rcon, fields = "record_id")
-
-    next_record_index <- which(all_recs_df$record_id == last_completed_id) +1
-
-    next_redcap_record_id_needed_reactiveval$next_redcap_record <-  all_recs_df$record_id[next_record_index]
-    
-    next_10_records_indices <- which(all_recs_df$record_id == last_completed_id) + c(1:10)
-    
-    next_redcap_record_id_needed_reactiveval$next_10_redcap_records <-  all_recs_df$record_id[next_10_records_indices]
-  })
-  
-  output$next_redcap_record_id_needed <- renderText({
-    
-    HTML(glue("<span style='text-align: center; font-size:20px; font-weight:bold; color:green; font-family:sans-serif; font-style:italic;'>{next_redcap_record_id_needed_reactiveval$next_redcap_record}</span>"))
-    
-  })
-  
-  output$next_10_redcap_record_id_needed <- renderText({
-    
-    # glue_collapse(next_redcap_record_id_needed_reactiveval$next_10_redcap_records, sep = "\n")
-    
-    HTML(glue("<span style='text-align: center; font-size:12px; font-weight:bold; color:green; font-family:sans-serif; font-style:italic;'>{glue_collapse(next_redcap_record_id_needed_reactiveval$next_10_redcap_records, sep = '\n')}</span>"))
-    
-  })
-  
-  imported_redcap_data <- reactiveValues(imported_data = tibble(), 
-                                         pelvic_thickness_value_for_qc_check = 0)
-  
-  
-  observeEvent(next_redcap_record_id_needed_reactiveval$next_redcap_record, ignoreInit = TRUE, {
-    updateSearchInput(session = session, 
-                      inputId = "redcap_record_id", 
-                      value = next_redcap_record_id_needed_reactiveval$next_redcap_record
-    )
-  })
-  
-  observeEvent(list(input$get_redcap_data_button, input$search_for_retrieved_next_record_button), ignoreInit = TRUE, {
-    id_length <- str_length(input$redcap_record_id)
-
-    if(id_length > 0){
-      redcap_record_id <- case_when(
-        id_length == 1 ~ paste0("000", input$redcap_record_id),
-        id_length == 2 ~ paste0("00", input$redcap_record_id),
-        id_length == 3 ~ paste0("0", input$redcap_record_id),
-        id_length == 4 ~ paste0(input$redcap_record_id)
-      )
-
-      record_redcap_export_df <- exportRecordsTyped(rcon = rcon_reactive$rcon, records = paste0(redcap_record_id)) %>%
-        type.convert() %>%
-        as_tibble()
-      
-      imported_redcap_data$imported_data <- record_redcap_export_df %>%
-        select(record_id, pelvic_incidence, pelvic_tilt, contains("pelvic_angle")) %>%
-        pivot_longer(cols = -record_id, names_to = "measure", values_to = "value") %>%
-        filter(!is.na(value))%>%
-        mutate(measure = str_replace_all(measure, "_pelvic_angle", "PA")) %>%
-        mutate(measure = str_replace_all(measure, "pelvic_incidence", "PI")) %>%
-        mutate(measure = str_replace_all(measure, "pelvic_tilt", "PT")) %>%
-        mutate(measure = str_to_upper(measure)) %>%
-        select(id = record_id, measure, value)
-      
-      imported_redcap_data$pelvic_thickness_value_for_qc_check <- record_redcap_export_df %>%
-        pull(pelvic_thickness) %>%
-        as.double()
-
-    }
-
-  })
-  
-  output$redcap_measures_table <- renderTable({
-    if(nrow(imported_redcap_data$imported_data)>0){
-      imported_redcap_data$cleaned_df <- imported_redcap_data$imported_data %>%
-        filter(measure %in% c("PI", "PT")) %>%
-        union_all(imported_redcap_data$imported_data %>%
-                    filter(measure %in% c("PI", "PT") == FALSE) %>%
-                    arrange(rev(row_number())))
-      
-      imported_redcap_data$cleaned_df
-    }
-  })
-  
-  
-  observeEvent(input$confirm_upload_final, ignoreInit = TRUE, {
-    
-    if(redcapAPI::exportNextRecordName(rcon = rcon_reactive$rcon)>1){
-      
-      if(is.na(input$redcap_record_id)){
-        redcap_record_id <- exportNextRecordName(rcon = rcon_reactive$rcon)
-      }else{
-        id_length <- str_length(input$redcap_record_id)
-        
-        redcap_record_id <- case_when(
-          id_length == 1 ~ paste0("000", input$redcap_record_id), 
-          id_length == 2 ~ paste0("00", input$redcap_record_id), 
-          id_length == 3 ~ paste0("0", input$redcap_record_id), 
-          id_length == 4 ~ paste0(input$redcap_record_id)
-        ) 
-      }
-      
-      redcap_upload_df <- redcap_tables$spine_coordinates_df %>%
-        mutate(record_id = redcap_record_id, 
-               redcap_repeat_instrument = "spine_coordinates")
-      
-      redcap_calibration_upload_df <- redcap_tables$spine_calibration %>%
-        mutate(record_id = redcap_record_id) %>%
-        select(record_id, everything())
-      
-      withProgress(message = 'Uploading Data', value = 0, {
-        number_of_steps <- 4
-        
-        incProgress(1/number_of_steps, detail = paste("Uploading Coordinates"))
-      
-        importRecords(rcon = rcon_reactive$rcon, data = redcap_upload_df, returnContent = "count")
-        
-        incProgress(1/number_of_steps, detail = paste("Uploading Calibration"))
-        
-        importRecords(rcon = rcon_reactive$rcon, data = redcap_calibration_upload_df, returnContent = "count")
-        
-        incProgress(1/number_of_steps, detail = paste("Completing Upload & retrieving Next Record ID"))
-        
-        record_ids_df <- exportRecordsTyped(rcon = rcon_reactive$rcon, fields = "record_id")
-        
-        next_rec_id <- record_ids_df$record_id[which(record_ids_df$record_id == redcap_record_id)+1]
-        
-        if(length(next_rec_id)>0){
-          completion_text <- paste("Tables were successfully uploaded. Next Record is:", next_rec_id ) 
-        }else{
-          completion_text <- paste("Tables were successfully uploaded. Unable to determine next Record number") 
-        }
-      }
-      )
-      
-      
-      sendSweetAlert(
-        session = session,
-        title = "Success !!",
-        text = completion_text,
-        type = "success"
-      )
-      
-    }
-  }
-  )
-  
-  final_upload_reactive_count <- reactiveValues()
-  final_upload_reactive_count$count <- 0
-  observeEvent(input$confirm_upload_final, {
-    final_upload_reactive_count$count <- final_upload_reactive_count$count + 1
-  }
-  )
-  
   
 }
   

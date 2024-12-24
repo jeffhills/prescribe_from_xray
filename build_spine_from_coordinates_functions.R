@@ -365,17 +365,17 @@ jh_build_c1_from_c2_geometry_function <- function(c2_geom){
   c2_sp_coord <- st_coordinates(c2_geom)[,1:2]["sp",]
   c2_ip_coord <- st_coordinates(c2_geom)[,1:2]["ip",]
   
-  ia <- jh_get_point_along_line_function(coord_a = c2_ia_coord, c2_sa_coord, percent_a_to_b = 1.25)
-  ip  <- jh_get_point_along_line_function(coord_a = c2_ip_coord, c2_sp_coord, percent_a_to_b = 1.25)  
+  ia <- jh_get_point_along_line_function(coord_a = c2_ia_coord, c2_sa_coord, percent_a_to_b = 1.4)
+  ip  <- jh_get_point_along_line_function(coord_a = c2_ip_coord, c2_sp_coord, percent_a_to_b = 1.4)  
   sa <- jh_get_point_along_line_function(coord_a = c2_ia_coord, c2_sa_coord, percent_a_to_b = 1.75)
   sp <- jh_get_point_along_line_function(coord_a = c2_ip_coord, c2_sp_coord, percent_a_to_b = 1.75)
   
-  ip <- jh_get_point_along_line_function(coord_a = ia, 
-                                   ip, 
-                                   percent_a_to_b = 1.25)
-  sp <- jh_get_point_along_line_function(coord_a = sa, 
-                                         sp, 
-                                         percent_a_to_b = 1.25)
+  # ip <- jh_get_point_along_line_function(coord_a = ia, 
+  #                                  ip, 
+  #                                  percent_a_to_b = 1.25)
+  # sp <- jh_get_point_along_line_function(coord_a = sa, 
+  #                                        sp, 
+  #                                        percent_a_to_b = 1.25)
   
   c1_coord_list <- list()
   c1_coord_list$sp <- sp
@@ -527,7 +527,7 @@ jh_build_spine_from_coordinates_function <- function(femoral_head_center = c(0,0
                                                   s1_anterior_superior = c(1, 1),
                                                   s1_posterior_superior = c(1, 2),
                                                   centroid_df = tibble(),
-                                                  spine_facing = "right"){
+                                                  spine_facing = "left"){
   
   # spine_facing <- "right"
   
@@ -754,21 +754,27 @@ jh_build_spine_from_coordinates_function <- function(femoral_head_center = c(0,0
   
   dens_sa <- jh_get_point_along_line_function(coord_a = return_list$vert_coord_list$c2$ia, 
                                               coord_b = return_list$vert_coord_list$c2$sa, 
-                                              percent_a_to_b = 1.6)
+                                              percent_a_to_b = 1.8)
   
   c2_posterior_superior_extended_point <- jh_get_point_along_line_function(coord_a = return_list$vert_coord_list$c2$ip, 
                                                                            coord_b = return_list$vert_coord_list$c2$sp, 
-                                                                           percent_a_to_b = 1.6)
+                                                                           percent_a_to_b = 1.8)
   
   dens_sp <- jh_get_point_along_line_function(coord_a = c2_posterior_superior_extended_point, 
                                               coord_b = dens_sa, 
-                                              percent_a_to_b = 0.4)
+                                              percent_a_to_b = 0.65)
   
-  dens <- st_polygon(list(rbind(dens_sp, return_list$vert_coord_list$c2$ip, return_list$vert_coord_list$c2$ia, dens_sa, dens_sp)))
+  dens <- st_polygon(list(rbind(dens_sp,
+                                return_list$vert_coord_list$c2$ip,
+                                return_list$vert_coord_list$c2$ia,
+                                dens_sa, dens_sp)))
   
   # return_list$c2_list <- c2_list
+  # return_list$united_c2 <- st_union(dens, return_list$vert_geoms_square_list$c2)
   
-  return_list$vert_geoms_square_list$c2 <- dens
+  return_list$vert_geoms_square_list$c2 <- st_union(dens, return_list$vert_geoms_square_list$c2)
+  
+  # return_list$vert_geoms_square_list$c2 <- dens
   
   
   ### create femoral heads and Sacrum #######
@@ -807,7 +813,7 @@ jh_build_spine_from_coordinates_function <- function(femoral_head_center = c(0,0
   
   return_list$vert_coord_list <- prepend(vert_coord_list, list('sacrum' = s1_list))
   
-  return_list$vert_geoms_square_list <- prepend(vert_geoms_square_list, list('sacrum' = sacrum_sf))
+  return_list$vert_geoms_square_list <- prepend(return_list$vert_geoms_square_list, list('sacrum' = sacrum_sf))
   
   return_list$vert_geom_list  <- map(.x = return_list$vert_geoms_square_list, 
                                 .f = ~ jh_safely_buffer_vert_function(vert_geom = .x, buffer_amount = buffer_amount)
@@ -894,6 +900,7 @@ jh_build_spine_from_coordinates_function <- function(femoral_head_center = c(0,0
   return(  list(vert_coord_list = return_list$vert_coord_list,
                 spine_coord_df = return_list$spine_coord_df,
                 vert_geoms_square_list = return_list$vert_geoms_square_list,
+                # united_c2 = return_list$united_c2,
                 vert_geom_list = return_list$vert_geom_list,
                 fem_head_sf = return_list$fem_head_sf,
                 fem_head_center = return_list$fem_head_center,
