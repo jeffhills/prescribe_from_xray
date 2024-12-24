@@ -552,6 +552,7 @@ compute_estimated_segment_angle_list_from_pelvic_angles_function <- function(pel
   
 }
 
+
 ################## NOW BUILD A QUICK SPINE AND MEASURE THE PELVIC ANGLES FOR TESTING WHETHER THEY ARE CORRECT #################
 ################## NOW BUILD A QUICK SPINE AND MEASURE THE PELVIC ANGLES FOR TESTING WHETHER THEY ARE CORRECT #################
 ################## NOW BUILD A QUICK SPINE AND MEASURE THE PELVIC ANGLES FOR TESTING WHETHER THEY ARE CORRECT #################

@@ -35,12 +35,10 @@ source("jh_prescribing_alignment_functions.R", local = TRUE)
 
 source("spinal_regional_alignment_analysis_by_vpa.R", local = TRUE)
 
-# source("jh_build_spine_by_vertebral_pelvic_angles_only.R", local = TRUE)
 source("jh_build_spine_by_vertebral_pelvic_angles_cleaned.R", local = TRUE)
 source("prescribing_alignment_by_matching_unfused.R", local = TRUE)
 source("xray_segment_angles_model_functions.R", local = TRUE)
 source("build_spine_from_coordinates_functions.R", local = TRUE)
-
 
 
 
@@ -2194,24 +2192,23 @@ server <- function(input, output, session) {
   spine_plan_upper_t_uiv_option_1_reactive <- eventReactive(input$compute_plan_xray, {
     alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
     
-    # spine_build_list <- spine_build_from_coordinates_reactive()
     spine_build_list <-  spine_build_list_reactivevalues$spine_build_list
     
     build_upper_t_uiv_spine_plot_function(pso_option_number = 1,
-                                  preop_age = input$preop_age,
-                                  preop_sex = input$preop_sex,
-                                  preop_pelvic_incidence = alignment_parameters_list$pelvic_incidence,
-                                  preop_pt = alignment_parameters_list$pelvic_tilt,
-                                  preop_l1pa = alignment_parameters_list$l1pa,
-                                  preop_t9pa = alignment_parameters_list$t9pa,
-                                  preop_t4pa = alignment_parameters_list$t4pa,
-                                  preop_c2pa = alignment_parameters_list$c2pa,
-                                  # l1pa_line_color = input$l1pa_line_color,
-                                  # t4pa_line_color = input$t4pa_line_color,
-                                  # c2pa_line_color = input$c2pa_line_color,
-                                  # preop_segment_angles_input_list_reactive = spine_build_list$segment_angles_list,
-                                  preop_rigid_levels_vector_reactive = preop_rigid_levels_vector_reactive_xray(),
-                                  return_list_or_plot = "list"
+                                          preop_age = input$preop_age,
+                                          preop_sex = input$preop_sex,
+                                          preop_pelvic_incidence = alignment_parameters_list$pelvic_incidence,
+                                          preop_pt = alignment_parameters_list$pelvic_tilt,
+                                          preop_l1pa = alignment_parameters_list$l1pa,
+                                          preop_t9pa = alignment_parameters_list$t9pa,
+                                          preop_t4pa = alignment_parameters_list$t4pa,
+                                          preop_c2pa = alignment_parameters_list$c2pa,
+                                          # l1pa_line_color = input$l1pa_line_color,
+                                          # t4pa_line_color = input$t4pa_line_color,
+                                          # c2pa_line_color = input$c2pa_line_color,
+                                          # preop_segment_angles_input_list_reactive = spine_build_list$segment_angles_list,
+                                          preop_rigid_levels_vector_reactive = preop_rigid_levels_vector_reactive_xray(),
+                                          return_list_or_plot = "list"
     )
   })
   
