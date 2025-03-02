@@ -227,75 +227,6 @@ jh_find_sacrum_inf_point_function <- function(s1_posterior_sup = c(0,0),
   
 }
 
-# jh_find_sacrum_inf_point_function <- function(s1_posterior_sup = c(0,0), 
-#                                            s1_midpoint = c(1, 1), 
-#                                            femoral_heads_center =  c(-1, 0), 
-#                                            spine_facing = "right") {
-#   
-#   length_s1_to_hips <- jh_calculate_distance_between_2_points_function(s1_midpoint, femoral_heads_center)
-#   
-#   d_AB <- jh_calculate_distance_between_2_points_function(s1_posterior_sup, s1_midpoint)
-#   
-#   # Extract coordinates for points A and B
-#   x1 <- s1_posterior_sup[1]
-#   y1 <- s1_posterior_sup[2]
-#   x2 <- s1_midpoint[1]
-#   y2 <- s1_midpoint[2]
-#   
-#   # Calculate the distance between A and B (sanity check)
-#   dist_AB <- sqrt((x2 - x1)^2 + (y2 - y1)^2)
-#   
-#   # Check if provided AB distance matches the actual one
-#   if (abs(dist_AB - d_AB) > 1e-6) {
-#     stop("Provided distance between A and B does not match the actual distance.")
-#   }
-#   
-#   # Calculate the slope of line AB
-#   dx <- x2 - x1
-#   dy <- y2 - y1
-#   
-#   # If AB is vertical (dx = 0), then BC is horizontal
-#   if (dx == 0) {
-#     C1 <- c(x2 + length_s1_to_hips, y2)  # move right
-#     C2 <- c(x2 - length_s1_to_hips, y2)  # move left
-#   } 
-#   # If AB is horizontal (dy = 0), then BC is vertical
-#   else if (dy == 0) {
-#     C1 <- c(x2, y2 + length_s1_to_hips)  # move up
-#     C2 <- c(x2, y2 - length_s1_to_hips)  # move down
-#   } 
-#   else {
-#     # Slope of the perpendicular line (negative reciprocal)
-#     slope_perpendicular <- -dx / dy
-#     
-#     # Calculate the possible coordinates for C using the perpendicular direction
-#     angle <- atan(slope_perpendicular)
-#     
-#     # Move in both directions along the perpendicular at a distance length_s1_to_hips
-#     C1_x <- x2 + length_s1_to_hips * cos(angle)
-#     C1_y <- y2 + length_s1_to_hips * sin(angle)
-#     
-#     C2_x <- x2 - length_s1_to_hips * cos(angle)
-#     C2_y <- y2 - length_s1_to_hips * sin(angle)
-#     
-#     C1 <- c(C1_x, C1_y)
-#     C2 <- c(C2_x, C2_y)
-#   }
-#   
-#   # Return both possible coordinates for C
-#   # tibble(C1 = list(C1), C2 = list(C2))
-#   if(str_to_lower(spine_facing) == "left"){
-#    
-#     sacrum_inf_x <- if_else(C1_x < femoral_heads_center[1], C2_x, C1_x)
-#     sacrum_inf_y <- if_else(C1_y < s1_midpoint[2], C1_y, C2_y) 
-#     
-#   }else{
-#     sacrum_inf_x <- if_else(C1_x < s1_midpoint[1], C1_x, C2_x)
-#     sacrum_inf_y <- if_else(C1_y < s1_midpoint[2], C1_y, C2_y) 
-#   }
-# 
-#   c(sacrum_inf_x, sacrum_inf_y)
-# }
 
 jh_find_fem_head_center_given_pi_and_thickness_function <- function(inf_sacrum, s1_center, length_s1_fem, angle_degrees) {
   # Convert the angle to radians
@@ -497,10 +428,17 @@ jh_extract_coord_from_vert_coord_list_function <- function(vert_coord_level_list
   
 }
 
-jh_construct_vpa_lines_from_spine_coord_df_function <- function(spine_coord_df, fem_head_center_coord){
-  s1_mid <- c((spine_coord_df %>%
-                 filter(vert_point == "center", spine_level == "sacrum"))$x, (spine_coord_df %>%
-                                                                                filter(vert_point == "center", spine_level == "sacrum"))$y)
+jh_construct_vpa_lines_from_spine_coord_df_function <- function(spine_coord_df,
+                                                                fem_head_center_coord, 
+                                                                s1_mid = 0){
+  
+  if(length(s1_mid) != 2){
+    s1_mid <- c((spine_coord_df %>%
+                   filter(vert_point == "center", spine_level == "sacrum"))$x, (spine_coord_df %>%
+                                                                                  filter(vert_point == "center", spine_level == "sacrum"))$y) 
+  }else{
+    s1_mid <- s1_mid
+  }
   
   vpa_lines_df <- spine_coord_df %>%
     filter(vert_point == "centroid") %>%
@@ -509,6 +447,7 @@ jh_construct_vpa_lines_from_spine_coord_df_function <- function(spine_coord_df, 
                                                                          s1_mid)))) %>%
     rowwise() %>%
     mutate(vpa_line_sf = st_sfc(vpa_line_sf)) 
+  
   vpa_lines_list <- vpa_lines_df$vpa_line_sf
   
   names(vpa_lines_list) <- paste0(vpa_lines_df$spine_level, "pa_line")
@@ -527,15 +466,37 @@ jh_build_spine_from_coordinates_function <- function(femoral_head_center = c(0,0
                                                   s1_anterior_superior = c(1, 1),
                                                   s1_posterior_superior = c(1, 2),
                                                   centroid_df = tibble(),
-                                                  spine_facing = "left"){
+                                                  spine_facing = "left", 
+                                                  calibration_modifier = 1, 
+                                                  center_femoral_heads = FALSE){
   
-  # spine_facing <- "right"
+  if(calibration_modifier != 1){
+    femoral_head_center <- femoral_head_center*calibration_modifier
+    s1_anterior_superior <- s1_anterior_superior*calibration_modifier
+    s1_posterior_superior <- s1_posterior_superior*calibration_modifier
+    centroid_df <- centroid_df %>%
+      mutate(x = x*calibration_modifier, 
+             y = y*calibration_modifier)
+  }
   
   
   return_list <- list()
   
   s1_endplate_width <- jh_calculate_distance_between_2_points_function(point_1 = s1_anterior_superior, point_2 = s1_posterior_superior)
   
+  ##### PRELIM STEP: ADJUST FEMORAL HEADS TO 0,0
+  if(center_femoral_heads){
+    centering_x_adjustment <- 0 - femoral_head_center[[1]]
+    centering_y_adjustment <- 0 - femoral_head_center[[2]]
+    
+    femoral_head_center <- c(0,0)
+    
+    s1_anterior_superior <- c(s1_anterior_superior[[1]] + centering_x_adjustment, s1_anterior_superior[[2]] + centering_y_adjustment) 
+    s1_posterior_superior <- c(s1_posterior_superior[[1]] + centering_x_adjustment, s1_posterior_superior[[2]] + centering_y_adjustment) 
+    
+    centroid_df <- centroid_df %>%
+      mutate(x = x + centering_x_adjustment, y = y + centering_y_adjustment)
+  }
   
   
   ##### FIRST STEP IS TO CONSTRUCT THE VERTEBRAE AND COMPUTE THE ESTIMATED SLOPES AT EACH LEVEL
@@ -907,7 +868,8 @@ jh_build_spine_from_coordinates_function <- function(femoral_head_center = c(0,0
                 segment_angles_list = return_list$segment_angles_list,
                 vpa_df = return_list$vpa_df,
                 lines_list = return_list$lines_list, 
-                buffer_amount = return_list$buffer_amount
+                buffer_amount = return_list$buffer_amount,
+                vert_angles_df = vert_angles_df
   ))
   
 }
@@ -1044,7 +1006,10 @@ jh_calculate_vertex_angle <- function(vertex_coord,
 jh_rotate_translate_vert_function <- function(vertebra,
                                                          point_of_rotation,
                                                          segment_angle_adjustment, 
-                                                         initial_translation_correction = c(0,0)) {
+                                                         initial_translation_correction = c(0,0), 
+                                              spine_orientation = "right") {
+  
+  spine_orientation_modifier = if_else(spine_orientation == "right", 1, -1)
   
   original_sp <- as.vector(st_coordinates(vertebra)[1, 1:2])
   
@@ -1052,7 +1017,7 @@ jh_rotate_translate_vert_function <- function(vertebra,
   angle_rad <- segment_angle_adjustment * pi / 180
   
   
-  vertebra <- vertebra + initial_translation_correction
+  vertebra <- vertebra + initial_translation_correction*spine_orientation_modifier
   # Extract the coordinates of the vertebra geometry
   coords <- st_coordinates(vertebra)[, 1:2]
   
@@ -1095,7 +1060,7 @@ jh_rotate_translate_vert_function <- function(vertebra,
 
 
 jh_rotate_spine_from_coordinates_by_segment_angles_function <- function(spine_build_list = list(), 
-                                                                        s1_posterior_superior = c(0,0), 
+                                                                        # s1_posterior_superior = c(0,0), 
                                                                         sa_adjustment_df = tibble(spine_level = character(), 
                                                                                                   sa_adjustment = numeric()), 
                                                                         spine_orientation = "right"){
@@ -1121,131 +1086,155 @@ jh_rotate_spine_from_coordinates_by_segment_angles_function <- function(spine_bu
   vert_list$sacrum$vert_coord <- sacrum_coord_list
   
   vert_list$l5 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$l5, 
-                                                                       point_of_rotation = s1_posterior_superior, 
+                                                                       point_of_rotation = spine_build_list$vert_coord_list$l5$inferior_posterior_disc, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1]), 
-                                                                       initial_translation_correction = c(0,0))
+                                                                       initial_translation_correction = c(0,0), 
+                                                    spine_orientation = spine_orientation)
   
   
   vert_list$l4 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$l4, 
                                                                        point_of_rotation = vert_list$l5$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:2]), 
-                                                                       initial_translation_correction = vert_list$l5$sp_translation)
+                                                                       initial_translation_correction = vert_list$l5$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   
   vert_list$l3 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$l3, 
                                                                        point_of_rotation = vert_list$l4$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:3]), 
-                                                                       initial_translation_correction = vert_list$l4$sp_translation)
+                                                                       initial_translation_correction = vert_list$l4$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   
   vert_list$l2 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$l2, 
                                                                        point_of_rotation = vert_list$l3$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:4]), 
-                                                                       initial_translation_correction = vert_list$l3$sp_translation)
+                                                                       initial_translation_correction = vert_list$l3$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   
   vert_list$l1 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$l1, 
                                                                        point_of_rotation = vert_list$l2$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:5]), 
-                                                                       initial_translation_correction = vert_list$l2$sp_translation)
+                                                                       initial_translation_correction = vert_list$l2$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t12 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t12, 
                                                                         point_of_rotation = vert_list$l1$vert_coord$sp, 
                                                                         segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:6]), 
-                                                                        initial_translation_correction = vert_list$l1$sp_translation)
+                                                                        initial_translation_correction = vert_list$l1$sp_translation, 
+                                                     spine_orientation = spine_orientation)
   
   vert_list$t11 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t11, 
                                                                         point_of_rotation = vert_list$t12$vert_coord$sp, 
                                                                         segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:7]), 
-                                                                        initial_translation_correction = vert_list$t12$sp_translation)
+                                                                        initial_translation_correction = vert_list$t12$sp_translation, 
+                                                     spine_orientation = spine_orientation)
   
   vert_list$t10 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t10, 
                                                                         point_of_rotation = vert_list$t11$vert_coord$sp, 
                                                                         segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:8]), 
-                                                                        initial_translation_correction = vert_list$t11$sp_translation)
+                                                                        initial_translation_correction = vert_list$t11$sp_translation, 
+                                                     spine_orientation = spine_orientation)
   #######
   
   vert_list$t9 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t9, 
                                                                        point_of_rotation = vert_list$t10$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:9]), 
-                                                                       initial_translation_correction = vert_list$t10$sp_translation)
+                                                                       initial_translation_correction = vert_list$t10$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t8 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t8, 
                                                                        point_of_rotation = vert_list$t9$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:10]), 
-                                                                       initial_translation_correction = vert_list$t9$sp_translation)
+                                                                       initial_translation_correction = vert_list$t9$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t7 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t7, 
                                                                        point_of_rotation = vert_list$t8$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:11]), 
-                                                                       initial_translation_correction = vert_list$t8$sp_translation)
+                                                                       initial_translation_correction = vert_list$t8$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t6 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t6, 
                                                                        point_of_rotation = vert_list$t7$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:12]), 
-                                                                       initial_translation_correction = vert_list$t7$sp_translation)
+                                                                       initial_translation_correction = vert_list$t7$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t5 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t5, 
                                                                        point_of_rotation = vert_list$t6$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:13]), 
-                                                                       initial_translation_correction = vert_list$t6$sp_translation)
+                                                                       initial_translation_correction = vert_list$t6$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t4 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t4, 
                                                                        point_of_rotation = vert_list$t5$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:14]), 
-                                                                       initial_translation_correction = vert_list$t5$sp_translation)
+                                                                       initial_translation_correction = vert_list$t5$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t3 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t3, 
                                                                        point_of_rotation = vert_list$t4$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:15]), 
-                                                                       initial_translation_correction = vert_list$t4$sp_translation)
+                                                                       initial_translation_correction = vert_list$t4$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t2 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t2, 
                                                                        point_of_rotation = vert_list$t3$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:16]), 
-                                                                       initial_translation_correction = vert_list$t3$sp_translation)
+                                                                       initial_translation_correction = vert_list$t3$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$t1 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$t1, 
                                                                        point_of_rotation = vert_list$t2$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:17]), 
-                                                                       initial_translation_correction = vert_list$t2$sp_translation)
+                                                                       initial_translation_correction = vert_list$t2$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$c7 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$c7, 
                                                                        point_of_rotation = vert_list$t1$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:18]), 
-                                                                       initial_translation_correction = vert_list$t1$sp_translation)
+                                                                       initial_translation_correction = vert_list$t1$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   ####
   
   vert_list$c6 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$c6, 
                                                                        point_of_rotation = vert_list$c7$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:19]), 
-                                                                       initial_translation_correction = vert_list$c7$sp_translation)
+                                                                       initial_translation_correction = vert_list$c7$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$c5 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$c5, 
                                                                        point_of_rotation = vert_list$c6$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:20]), 
-                                                                       initial_translation_correction = vert_list$c6$sp_translation)
+                                                                       initial_translation_correction = vert_list$c6$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$c4 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$c4, 
                                                                        point_of_rotation = vert_list$c5$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:21]), 
-                                                                       initial_translation_correction = vert_list$c5$sp_translation)
+                                                                       initial_translation_correction = vert_list$c5$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$c3 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$c3, 
                                                                        point_of_rotation = vert_list$c4$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:22]), 
-                                                                       initial_translation_correction = vert_list$c4$sp_translation)
+                                                                       initial_translation_correction = vert_list$c4$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$c2 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$c2, 
                                                                        point_of_rotation = vert_list$c3$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:23]), 
-                                                                       initial_translation_correction = vert_list$c3$sp_translation)
+                                                                       initial_translation_correction = vert_list$c3$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vert_list$c1 <- jh_rotate_translate_vert_function(vertebra = spine_build_list$vert_geoms_square_list$c1, 
                                                                        point_of_rotation = vert_list$c2$vert_coord$sp, 
                                                                        segment_angle_adjustment = sum(sa_adjustment_df$sa_adjustment[1:24]), 
-                                                                       initial_translation_correction = vert_list$c2$sp_translation)
+                                                                       initial_translation_correction = vert_list$c2$sp_translation, 
+                                                    spine_orientation = spine_orientation)
   
   vpa_list <- list()
   

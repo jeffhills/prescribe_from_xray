@@ -59,7 +59,10 @@ jh_spine_levels_factors_df <- tibble(level = c("c1", "c2", "c3", "c4", "c5", "c6
   mutate(level_cobb_label = paste0(level_label, "-S1")) %>%
   select(level, level_tilt, level_pelvic_angle, level_cobb_angle, level_label, level_tilt_label, level_pelvic_angle_label, level_cobb_label) %>%
   mutate(across(everything(), fct_inorder)) %>%
-  mutate(across(everything(), fct_rev))
+  mutate(across(everything(), fct_rev)) %>%
+  mutate(interspace = paste0(level_label, "-", lead(level_label))) %>%
+  mutate(interspace = if_else(interspace == "L5-NA", "L5-S1", interspace)) %>%
+  mutate(interspace = fct_inorder(interspace))
 
 ### THEME FUNCTION
 jh_theme_function <- function(theme_template = theme_minimal(), 

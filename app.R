@@ -26,6 +26,8 @@ library(redcapAPI)
 options(shiny.maxRequestSize = 25*1024^2)
 
 source("jh_functions.R", local = TRUE)
+source("shiny_functions.R", local = TRUE)
+source("jh_calculation_functions.R", local = TRUE)
 source("compute_segment_angles_function_from_sim_data_2024.R", local = TRUE)
 source("function_segment_angles_separated.R", local = TRUE)
 
@@ -57,7 +59,7 @@ get_spine_labels <- function(all_centroids = FALSE) {
     return(c("fem_head_center", 
              "s1_anterior_superior", "s1_posterior_superior", 
              "l4_centroid", "l1_centroid", "t9_centroid", "t4_centroid", 
-             "t1_centroid", "c2_centroid"))
+             "t1_centroid", "c2_centroid", 'calibration_1', 'calibration_2'))
   }
 }
 
@@ -150,12 +152,6 @@ create_spine_rigid_level_input_function <- function(segment_input_label){
   segment_id <- paste0("preop_", str_to_lower(str_replace_all(segment_input_label, pattern = "-", "_")), "_segment")
   rigid_segment_id <- str_replace_all(segment_id, "_segment", "_rigid_xray")
   segment_label <- segment_input_label
-  # initial_value <- segment_value_input
-  
-  # div(
-    # class = "segment-input",
-    # span(segment_label,
-    #      class = "segment-label"),
     div(
       class = "segment-input",
       prettyCheckbox(
@@ -246,11 +242,16 @@ ui <- dashboardPage(
                             style = "color: steelblue"))
             ),
             hr(),
-            
+            conditionalPanel(
+              condition = "input.all_points_recorded == true",
+              actionBttn(inputId = "calibrate_button", label = "Calibrate", size = "sm", style = "fill")
+            ),
+            hr(),
             uiOutput(outputId = "preop_xray_rigid_segments_ui")
           )
           )
     ),
+    textOutput("calibration_status_text"),
     div(
       style = "display: none;",  # Hide the entire div, including the switch
       switchInput(
@@ -289,16 +290,11 @@ ui <- dashboardPage(
     ),
     # Boxes need to be put in a row (or column)
     fluidRow(
-      # conditionalPanel(
-      #   "input.all_points_recorded == true",
-      #   hr()
-      # ),
-      
       ########## MAIN PAGE COLUMN 1 STARTS HERE: ##############
       ########## MAIN PAGE COLUMN 1 STARTS HERE: ##############
       ########## MAIN PAGE COLUMN 1 STARTS HERE: ##############
       
-      column(width = 3, 
+      column(width = 4, 
       box(width = 12,
           conditionalPanel(
             condition = "input.xray_file_uploaded == true",
@@ -721,13 +717,69 @@ ui <- dashboardPage(
       ########## MAIN PAGE COLUMN 3 STARTS HERE: ##############
       ########## MAIN PAGE COLUMN 3 STARTS HERE: ##############
       
-      column(width = 4, 
+      # column(width = 4, 
+      column(width = 8,
              conditionalPanel(
         condition = "input.all_points_recorded == true",
         box(title = "Preop Alignment:", 
             width = 12,
-            plotOutput(outputId = "preop_spine_simulation_plot",
-                       height = "750px"),
+            fluidRow(
+              column(width = 6, 
+                     plotOutput(outputId = "preop_spine_simulation_plot",
+                                height = "750px"), 
+                     switchInput(inputId = "add_rod", label = "Add Rod?", value = FALSE, onLabel = "Yes", offLabel = "No"),
+                     conditionalPanel(condition = "input.add_rod == true",
+                                      prettyRadioButtons(
+                                        inputId = "rod_uiv",
+                                        label = "Choose:",
+                                        selected = "T4",
+                                        choices = c("C2", "T2", "T4", "T9", "T10", "T11", "T12", "L1", "L2")
+                                      )
+                     ),
+                     conditionalPanel(condition = "input.add_rod == true",
+                                      downloadButton(outputId = "download_rod_template", label = "Download Rod Template", icon = icon("download"))
+                     ),
+                     tableOutput(outputId = "rod_table")
+              ),
+              column(width = 6, 
+
+                              box(width = 12,
+                                  title = "Cervical", 
+                                  collapsible = TRUE, 
+                                  collapsed = TRUE,
+                                  tags$table(width = "100%",
+                                             map(.x = jh_spine_levels_factors_df$interspace[1:7], 
+                                                 .f = ~generate_spine_level_controls(spine_level = .x, return_as_full_table = FALSE))
+                                  )
+                              ),
+                              box(width = 12,title = "Thoracic", 
+                                  collapsible = TRUE, 
+                                  collapsed = FALSE,
+                                  tags$table(width = "100%",
+                                             map(.x = jh_spine_levels_factors_df$interspace[8:19], 
+                                                 .f = ~generate_spine_level_controls(spine_level = .x, return_as_full_table = FALSE))
+                                  )
+                              ),
+                              box(width = 12,title = "Lumbar", 
+                                  collapsible = TRUE, 
+                                  collapsed = FALSE,
+                                  tags$table(width = "100%",
+                                             map(.x = jh_spine_levels_factors_df$interspace[20:24], 
+                                                 .f = ~generate_spine_level_controls(spine_level = .x, return_as_full_table = FALSE))
+                                  )
+                              ),
+                     actionBttn(
+                       size = "md",
+                       inputId = "segmental_planning_reset",
+                       block = TRUE,
+                       label = "Reset",
+                       style = "unite",
+                       color = "danger",
+                       icon = icon("reset")
+                     ),
+                     tableOutput(outputId = "spine_segmental_planning_df")
+                     )
+            ),
             tableOutput("alignment_parameters_df")
         ), 
         box(title = "Alignment Planning:",
@@ -748,35 +800,39 @@ ui <- dashboardPage(
       ########## MAIN PAGE COLUMN 4 STARTS HERE: ##############
       ########## MAIN PAGE COLUMN 4 STARTS HERE: ##############
       
-      column(width = 5,
-               conditionalPanel(
-                 condition = "input.all_points_recorded == true",
-                 box(width = 12,
-                     # title = "Plans",
-                     actionBttn(
-                       inputId = "compute_plan_xray",
-                       label = "Compute Plan",
-                       style = "unite", 
-                       color = "danger"
-                     ),
-                     hr(),
-                     fluidRow(
-                       tabBox(width = 12,
-                              title = div(style = "float: right;", "Alignment Plans"),  # Moves title to the right
-                              id = "alignment_plans", 
-                              tabPanel("Lower T UIV", 
-                                       # plotOutput(outputId = "spine_plan_lower_t_xray", height = 650), 
-                                       uiOutput(outputId = "spine_plan_lower_t_ui")
-                              ),
-                              tabPanel("Upper T UIV", 
-                                       # plotOutput(outputId = "spine_plan_upper_t_xray", height = 650),
-                                       uiOutput(outputId = "spine_plan_upper_t_ui")
-                              )
-                       )
-                     )
-                 )
-               )
-             )
+      # column(width = 5,
+      #          conditionalPanel(
+      #            condition = "input.all_points_recorded == true",
+      #            box(width = 12,
+      #                # title = "Plans",
+      #                actionBttn(
+      #                  inputId = "compute_plan_xray",
+      #                  label = "Compute Plan",
+      #                  style = "unite", 
+      #                  color = "danger"
+      #                ),
+      #                hr(),
+      #                fluidRow(
+      #                  tags$table(width = "100%",
+      #                             map(.x = jh_spine_levels_factors_df$interspace, 
+      #                                 .f = ~generate_spine_level_controls(spine_level = .x, return_as_full_table = FALSE))
+      #                             )
+      #                  # tabBox(width = 12,
+      #                  #        title = div(style = "float: right;", "Alignment Plans"),  # Moves title to the right
+      #                  #        id = "alignment_plans", 
+      #                  #        tabPanel("Lower T UIV", 
+      #                  #                 # plotOutput(outputId = "spine_plan_lower_t_xray", height = 650), 
+      #                  #                 uiOutput(outputId = "spine_plan_lower_t_ui")
+      #                  #        ),
+      #                  #        tabPanel("Upper T UIV", 
+      #                  #                 # plotOutput(outputId = "spine_plan_upper_t_xray", height = 650),
+      #                  #                 uiOutput(outputId = "spine_plan_upper_t_ui")
+      #                  #        )
+      #                  # )
+      #                )
+      #            )
+      #          )
+      #        )
     )
   )
 )
@@ -913,7 +969,8 @@ server <- function(input, output, session) {
   # observeEvent(input$image, {
   observe({
     req(input$image)
-    if(xray_instructions_reactiveval() == "Completed"){
+    # if(xray_instructions_reactiveval() == "Completed"){
+    if(length(spine_build_list_reactivevalues$spine_build_list)>0){
       req(input$image)  # Ensure there's an image uploaded
       
       xray <- image_scale(image_read(path = input$image$datapath), "400x")
@@ -937,28 +994,8 @@ server <- function(input, output, session) {
       
       # Encode the scaled image to base64
       img_base64 <- base64enc::dataURI(file = temp_file, mime = "image/jpeg")
-
-      ####### old
-      # xray <- image_scale(image_read(path = input$image$datapath), "400x")
-      # 
-      # xray_height <- image_info(xray)$height
-      # xray_width <- image_info(xray)$width
-      # 
-      # # Generate the plot
-      # plot <- xray_reactive_plot()
-      # 
-      # # Save the plot as a temporary file
-      # temp_file <- tempfile(fileext = ".png")
-      # ggsave(temp_file, plot = plot, width = xray_width, height = xray_height, units = "px")
-      # 
-      # # Read the image back and convert it to a base64 string for embedding
-      # img <- magick::image_read(temp_file)
-      # img_base64 <- base64enc::dataURI(file = temp_file, mime = "image/png")
-      # 
-      # # Send the image to the UI
-      # # session$sendCustomMessage('load-plot-image', list(src = img_base64))
       
-      print(paste("Sending load-plot-image message", "Xray height is ", xray_height, "Width is ", xray_width))  # Debugging log
+      # print(paste("Sending load-plot-image message", "Xray height is ", xray_height, "Width is ", xray_width))  # Debugging log
       session$sendCustomMessage('load-plot-image', list(src = img_base64)) 
       
     }else{
@@ -1024,6 +1061,8 @@ server <- function(input, output, session) {
     
     # Debugging step to print the structure of click_coord_reactive_list$coords
     # print(str(click_coord_reactive_list$coords))
+    # print("test")
+    # print(names(click_coord_reactive_list$coords))
     
     # Convert the named list to a list of lists
     coords_for_js <- unname(lapply(click_coord_reactive_list$coords, function(coord) {
@@ -1034,6 +1073,7 @@ server <- function(input, output, session) {
     # print(coords_for_js)
     
     plot_points_coordinates_reactiveval(coords_for_js)
+    
     
     # Send the coordinates to JavaScript
     # session$sendCustomMessage('plot-coordinates', list(coords = coords_for_js))
@@ -1068,20 +1108,82 @@ server <- function(input, output, session) {
       
       xray_instructions_reactiveval("x")
       
-      print("correct instructions")
-      
     } else {
       # print("inccorrect instructions")
       
       instruction <- "All points recorded."
       xray_instructions_reactiveval("Completed")
       
-      # print(paste(xray_instructions_reactiveval()))
+      print(paste(xray_instructions_reactiveval()))
     }
 
     HTML("<div>", instruction, "</div>")
   })
   
+  ############ CALIBRATION #####################
+  ############ CALIBRATION #####################
+  ############ CALIBRATION #####################
+
+  observeEvent(list(input$xray_click, input$calibrate_button), ignoreInit = TRUE, {
+    calibration_length_modal_function <- function(calibration_length = 100){
+      modalDialog(easyClose = TRUE,  size = "l",  
+                  h3("Enter Length in mm"),
+                  fluidRow(
+                    column(width = 2),
+                    column(width = 6,
+                           numericInput(inputId = "calibration_length", 
+                                 label = "Length (mm):", 
+                                 value = calibration_length,
+                                 min = 10, 
+                                 max = 1000)
+                           )
+                  )
+      )
+    }
+    if(any(names(click_coord_reactive_list$coords) == "calibration_2")){
+      
+      showModal(
+        calibration_length_modal_function(
+          calibration_length = 100)
+        # if (!is.null(input$calibration_length)) input$calibration_length else 100
+      ) 
+    }
+  
+  })
+  
+
+  
+  calibration_list <- reactiveValues(calibration_modifier = 1)
+  
+  output$calibration_status_text <- renderText({
+    
+    calibration_pixel_distance_text <- paste0("Calibration Modifier:", calibration_list$calibration_modifier)
+    
+    if(length(click_coord_reactive_list)>0){
+      if(any(names(click_coord_reactive_list$coords) == "calibration_2")){
+        
+        calibration_pixel_distance <- round(jh_calculate_distance_between_2_points_function(point_1 = c(click_coord_reactive_list$coords$calibration_1$x, 
+                                                                                                        click_coord_reactive_list$coords$calibration_1$y), 
+                                                                                            point_2 = c(click_coord_reactive_list$coords$calibration_2$x, 
+                                                                                                        click_coord_reactive_list$coords$calibration_2$y)), 4)
+        # calibration_list$calibration_modifier <- round(as.double(input$calibration_length)/calibration_pixel_distance, 4)
+
+        calibration_list$calibration_modifier <-  as.double(input$calibration_length)/calibration_pixel_distance
+        
+        calibration_modifier_text <- round(calibration_list$calibration_modifier, 4)
+
+        calibration_pixel_distance_text <- paste0("Measured Pixel Distance = ", calibration_pixel_distance, "\n Calibration Length Entered:", input$calibration_length, "\n Calibration Modifier:", calibration_modifier_text)
+      }
+    }
+    
+    calibration_pixel_distance_text
+  })
+  
+  
+  
+  
+  ########### CALIBRATION END #######
+
   
   # Create a reactive table to display coordinates
   click_coordinates_df_reactive <- reactive({
@@ -1144,8 +1246,7 @@ server <- function(input, output, session) {
   })
   
 
-  ############ COMPUTE CENTROIDS #################
-  # Reactive tibble for centroid coordinates
+  
   xray_centroid_coordinates_reactive_df <- reactive({
     # Get clicked coordinates dataframe
     xray_click_coordinates_df <- click_coordinates_df_reactive()
@@ -1270,22 +1371,10 @@ server <- function(input, output, session) {
                                                       coord_b = s1_post_sup_corner, 
                                                       percent_a_to_b = 0.5)
       
-      print(paste("s1_posterior_sup: ", toString(s1_post_sup_corner),
-                  "\n s1_anterior_sup: ", toString(s1_ant_sup_corner)))
       
       inf_sacrum_vec <- jh_find_sacrum_inf_point_function(s1_posterior_sup = s1_post_sup_corner, 
                                                           s1_anterior_sup = s1_ant_sup_corner, 
                                                           spine_facing = spine_orientation())
-      
-      # inf_sacrum_vec <- jh_find_sacrum_inf_point_function(s1_posterior_sup = s1_post_sup_corner,
-      #                                                     s1_midpoint = s1_midpoint, 
-      #                                                     femoral_heads_center = fem_head_center,
-      #                                                     spine_facing = spine_orientation())
-      
-      # print(paste("S1 midpoint: ", toString(s1_midpoint),
-      #             "\n inf_sacrum: ", toString(inf_sacrum_vec), 
-      #             "\n fem_head center: ", toString(fem_head_center),
-      #             "\n spine orientation: ", spine_orientation()))
       
       pelvic_incidence_value <- jh_calculate_vertex_angle(vertex_coord = s1_midpoint, 
                                          posterior_point_coord = inf_sacrum_vec, 
@@ -1585,49 +1674,44 @@ server <- function(input, output, session) {
   
   # spine_coordinates_reactivevalues <- reactiveValues(spine_build_list = list())
   
-  observeEvent(xray_instructions_reactiveval(), ignoreInit = TRUE, {
+  # observeEvent(calibration_list$calibration_modifier, ignoreInit = TRUE, {
+  observe({
     spine_build_list <- list()
     # if(any(names(click_coord_reactive_list$coords) == "c2_centroid")){
-    if(xray_instructions_reactiveval() == "Completed"){
-      spine_build_list <- jh_build_spine_from_coordinates_function(femoral_head_center = c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y), 
-                                                                   s1_anterior_superior = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y), 
-                                                                   s1_posterior_superior = c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y), 
-                                                                   centroid_df = xray_centroid_coordinates_reactive_df(), 
-                                                                   spine_facing = spine_orientation())
+    # if(xray_instructions_reactiveval() == "Completed"){
       
-      # spine_build_list$spine_coord_df <- bind_rows(map(.x = names(spine_build_list$vert_coord_list), 
-      #                                                                                  .f = ~ jh_extract_coord_from_vert_coord_list_function(vert_coord_level_list = spine_build_list$vert_coord_list[[.x]]) %>%
-      #                                                                                    mutate(spine_level = .x)))%>%
-      #   select(spine_level, vert_point, x, y) 
-      # spine_build_list$spine_coord_df <-   jh_extract_coord_from_vert_coord_list_function(vert_coord_level_list = spine_build_list$vert_coord_list)
+    if(isTruthy(calibration_list$calibration_modifier)){
+      # print("got to here")
+      if(calibration_list$calibration_modifier != 1){
+        # print("got to here2")
+      spine_build_list <- jh_build_spine_from_coordinates_function(femoral_head_center = c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y),
+                                                                   s1_anterior_superior = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y),
+                                                                   s1_posterior_superior = c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y),
+                                                                   centroid_df = xray_centroid_coordinates_reactive_df(),
+                                                                   spine_facing = spine_orientation(),
+                                                                   calibration_modifier = calibration_list$calibration_modifier,
+                                                                   center_femoral_heads = TRUE
+                                                                   )
       
+      print(calibration_list$calibration_modifier)
+      
+      
+      
+      }
     }
     
     spine_build_list_reactivevalues$spine_build_list <- spine_build_list
   })
   
-  # observeEvent(xray_instructions_reactiveval(), ignoreInit = TRUE, {
-  #   if(xray_instructions_reactiveval() == "Completed"& length(names(spine_build_list_reactivevalues$spine_build_list)>0)){
-  #     spine_build_list_reactivevalues$spine_build_list$spine_coord_df <- bind_rows(map(.x = names(spine_build_list_reactivevalues$spine_build_list$vert_coord_list), 
-  #                                     .f = ~ jh_extract_coord_from_vert_coord_list_function(vert_coord_level_list = spine_build_list_reactivevalues$spine_build_list$vert_coord_list[[.x]]) %>%
-  #                                       mutate(spine_level = .x)))%>%
-  #       select(spine_level, vert_point, x, y) 
-  #     
-  #   }
-  #   
-  # })
-  
-  # spine_build_from_coordinates_reactive <- reactive({
-  # 
-  #   
-  # })
+
 
   
   xray_reactive_plot <- reactive({
     spine_xr_build_list <-  spine_build_list_reactivevalues$spine_build_list
     
-    if(xray_instructions_reactiveval() == "Completed"){
-
+    # if(xray_instructions_reactiveval() == "Completed"){
+    if(length(spine_build_list_reactivevalues$spine_build_list)>0){
+        
       xray <- image_scale(image_read(path = input$image$datapath), "400x")
       
       xray_height <- image_info(xray)$height
@@ -1736,11 +1820,11 @@ server <- function(input, output, session) {
                   color = "purple", size = 0.25) +
         coord_fixed(xlim = c(0, xray_width), ylim = c(0, xray_height))
       
-      if(nrow(sup_endplates_df)>1){
-        xray_plot <- xray_plot +
-        geom_line(data = sup_endplates_df, aes(x = x, y = y, group = spine_level), color = "red", size = 0.2) +
-        geom_line(data = inf_endplates_df, aes(x = x, y = y, group = spine_level), color = "green", size = 0.2) 
-      }
+      # if(nrow(sup_endplates_df)>1){
+      #   xray_plot <- xray_plot +
+      #   geom_line(data = sup_endplates_df, aes(x = x, y = y, group = spine_level), color = "red", size = 0.2) +
+      #   geom_line(data = inf_endplates_df, aes(x = x, y = y, group = spine_level), color = "green", size = 0.2) 
+      # }
       
       xray_plot
       
@@ -1751,12 +1835,7 @@ server <- function(input, output, session) {
     
   })
   
-  # output$xray_plot_complete <- renderPlot({
-  #   xray_reactive_plot()
-  # }
-  # )
-  
-  
+
   observeEvent(input$xray_plot_click, {
     spine_xr_build_list <-  spine_build_list_reactivevalues$spine_build_list
     
@@ -1793,7 +1872,7 @@ server <- function(input, output, session) {
         rows_upsert(new_vert_point_coord_df, by = c("spine_level", "vert_point"))
       
     }else{
-      print(names(spine_build_list), "Reactive values to list results with names: names(reactiveValuesToList(spine_build_list_reactivevalues))", names(reactiveValuesToList(spine_build_list_reactivevalues)))
+      # print(names(spine_build_list), "Reactive values to list results with names: names(reactiveValuesToList(spine_build_list_reactivevalues))", names(reactiveValuesToList(spine_build_list_reactivevalues)))
     }
     
   })
@@ -1808,17 +1887,6 @@ server <- function(input, output, session) {
      
     if(length(spine_xr_build_list)>0){
       # Assume these are the clicked coordinates from the plot
-
-      # spine_coord_df <- tibble(spine_level = c("s1", "s1"),
-      #                          vert_point = c("sa", "sp"),
-      #                          x = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$x),
-      #                          y = c(click_coord_reactive_list$coords$s1_anterior_superior$y, click_coord_reactive_list$coords$s1_posterior_superior$y),
-      # ) %>%
-      #   union_all(spine_xr_build_list$aligned_vert_geometry_df %>%
-      #               select(spine_level, vert_coord_df) %>%
-      #               unnest(vert_coord_df)) %>%
-      #   # mutate(spine_point = paste(str_to_upper(spine_level), str_to_upper(vert_point))) %>%
-      #   select(spine_level, vert_point, x, y)
 
       clicked_x <- input$xray_plot_click$x
       clicked_y <- input$xray_plot_click$y
@@ -1838,35 +1906,12 @@ server <- function(input, output, session) {
       # xray_click_tibble <- nearest_point
     }
     
-    print(xray_click_tibble)
+    # print(xray_click_tibble)
     xray_click_tibble
   }) %>%
     bindEvent(input$xray_plot_click)
   
   
-    # observe({
-    #   if(xray_instructions_reactiveval() == "Completed"){
-    #     req(input$image)  # Ensure there's an image uploaded
-    #     
-    #     # Generate the plot
-    #     plot <- xray_reactive_plot()
-    #     
-    #     # Save the plot as a temporary file
-    #     temp_file <- tempfile(fileext = ".png")
-    #     # ggsave(temp_file, plot = plot, width = 8, height = 10, dpi = 150)
-    #     ggsave(temp_file, plot = plot, width = 350, height = 700, units = "px")
-    #     
-    #     # Read the image back and convert it to a base64 string for embedding
-    #     img <- magick::image_read(temp_file)
-    #     img_base64 <- base64enc::dataURI(file = temp_file, mime = "image/png")
-    #     
-    #     # Send the image to the UI
-    #     # session$sendCustomMessage('load-plot-image', list(src = img_base64))
-    #     session$sendCustomMessage('uploadedImage', list(src = img_base64)) 
-    #   }
-    # 
-    # })
-
   
   
   output$preop_xray_rigid_segments_ui <- renderUI({
@@ -1880,7 +1925,11 @@ server <- function(input, output, session) {
     # column(width = 5,
     fluidRow(
       column(width = 12,
-      h4("Select Any Fused Levels:"),
+             tags$div(
+               "Select Any Fused Levels:",
+               style = "font-size: 12pt; font-style: italic; color: black; text-align: center;"
+             ),
+      # h4("Select Any Fused Levels:"),
       box(width = 12,
           title = "Cervical", 
           collapsible = TRUE, 
@@ -1940,127 +1989,301 @@ server <- function(input, output, session) {
   
 
 
+  # Initialize a reactiveValues dataframe
+  spine_segmental_planning_df <- reactiveValues(
+    df = tibble(
+      spine_interspace = jh_spine_levels_factors_df$interspace,
+      adjustment = rep(0, length(jh_spine_levels_factors_df$interspace))
+    )
+  )
   
-  output$preop_spine_simulation_plot <- renderPlot({
-    spine_build_list <-  spine_build_list_reactivevalues$spine_build_list
-    
-    if(xray_instructions_reactiveval() == "Completed"){
-      alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
-      
-
-      if(length(spine_build_list)>0){
-        
-        ggplot() +
-        geom_sf(data = st_sfc(spine_build_list$vert_geom_list), 
-                color = "black",
-                fill = "grey90", 
-                alpha = 0.8) +
-        # geom_sf(data = spine_build_list$vert_geom_list$c1, 
-        #         fill = "grey90",
-        #         alpha = 0.5) +
-        geom_path(data =  spine_build_list$spine_coord_df %>%
-                    filter(vert_point %in% c("center", "centroid")), aes(x = x, y = y)) +
-        geom_sf(data = spine_build_list$fem_head_sf, 
-                fill = "grey90") +
-        # geom_sf(data = spine_build_list$sacrum_sf, 
-        #         fill = "grey90", 
-        #         alpha = 0.8) +
-        geom_sf(data = spine_build_list$lines_list$l1pa, 
-                color = "blue")+
-        geom_sf(data = spine_build_list$lines_list$t9pa, 
-                color = "orange") +
-        geom_sf(data = spine_build_list$lines_list$t4pa, 
-                color = "purple") +
-        geom_sf(data = spine_build_list$lines_list$c2pa, 
-                color = "darkgreen") +
-        theme_void() +
-        labs(title = "Preop Alignment") +
-        theme(
-          axis.text = element_blank(),
-          axis.title = element_blank(),
-          plot.title = element_text(
-            size = 16,
-            hjust = 0.5,
-            vjust = -0.5,
-            face = "bold.italic"
-          ),
-          plot.background = element_rect(fill = "transparent", colour = NA),
-          panel.background = element_rect(fill = "transparent", colour = NA)
-        )
-      }
-      
-       
-
-      
-      
-    }
-    
-    # if(any(names(alignment_parameters_list) == "c2pa")){
-      
-      # if(any(names(click_coord_reactive_list$coords) == "c2_centroid")){
-        
-        # xray_centroid_coordinates_reactive_df()
-        
-        # spine_build_list <- jh_build_spine_from_coordinates_function(femoral_head_center = c(click_coord_reactive_list$coords$fem_head_center$x, click_coord_reactive_list$coords$fem_head_center$y), 
-        #                                                  s1_anterior_superior = c(click_coord_reactive_list$coords$s1_anterior_superior$x, click_coord_reactive_list$coords$s1_anterior_superior$y), 
-        #                                                  s1_posterior_superior = c(click_coord_reactive_list$coords$s1_posterior_superior$x, click_coord_reactive_list$coords$s1_posterior_superior$y), 
-        #                                                  centroid_df = xray_centroid_coordinates_reactive_df(), 
-        #                                                  spine_facing = spine_orientation())
-        
-        
-        # spine_simulation_list <- build_full_spine_from_vertebral_pelvic_angles_function(pelv_inc_value = alignment_parameters_list$pelvic_incidence,
-        #                                                                                 pt_value = alignment_parameters_list$pelvic_tilt,
-        #                                                                                 l1pa_value_input = alignment_parameters_list$l1pa,
-        #                                                                                 # l1s1_value_input = alignment_parameters_list$preop_l1s1,
-        #                                                                                 # t10_l2_value_input = alignment_parameters_list$preop_t10_l2,
-        #                                                                                 t9pa_value_input = alignment_parameters_list$t9pa,
-        #                                                                                 t4pa_value_input = alignment_parameters_list$t4pa,
-        #                                                                                 c2pa_value_input = alignment_parameters_list$c2pa,
-        #                                                                                 # c2_c7_value_input = alignment_parameters_list$preop_c2c7,
-        #                                                                                 # input_segment_angles = "yes",
-        #                                                                                 # segment_angles_input = segment_angles_list,
-        #                                                                                 spine_faces = spine_orientation()
-        # )
-        # 
-        # spine_geoms_df <- spine_simulation_list$spine_df %>%
-        #   select(object, geom, geom_alpha)
-        
-        # measurements_df <- spine_simulation_list$measurements_df
-        
-        # ggplot() +
-        #   geom_sf(data = spine_geoms_df,
-        #           color = "black",
-        #           aes(geometry = geom,
-        #               alpha = geom_alpha,
-        #               fill = "grey90")) +
-        #   # ylim(-20, 110) +
-        #   theme_void() +
-        #   labs(title = "Preop Alignment") +
-        #   theme(
-        #     axis.text = element_blank(),
-        #     axis.title = element_blank(),
-        #     plot.title = element_text(
-        #       size = 16,
-        #       hjust = 0.5,
-        #       vjust = -0.5,
-        #       face = "bold.italic"
-        #     ),
-        #     plot.background = element_rect(fill = "transparent", colour = NA),
-        #     panel.background = element_rect(fill = "transparent", colour = NA)
-        #   ) +
-        #   draw_text(text = spine_simulation_list$measurements_df$label,
-        #             x = spine_simulation_list$measurements_df$x,
-        #             y = spine_simulation_list$measurements_df$y, size = 11) +
-        #   scale_fill_identity() +
-        #   scale_alpha_identity()+
-        #   xlim(-30, 30)
-      # } 
-      # coord_fixed()
-      
-    # }
-    
+  map(.x = jh_spine_levels_factors_df$interspace, 
+      .f = ~ update_spine_segmental_planning_table_observe_button_function(spine_segmental_planning_df,
+                                                                           spine_interspace = .x, session = session))
+  
+  
+  # Optional: Display the updated table in UI for debugging
+  output$spine_segmental_planning_df <- renderTable({
+    spine_segmental_planning_df$df
+  })
+  
+  observeEvent(input$segmental_planning_reset, ignoreInit = TRUE, {
+    spine_segmental_planning_df$df <- spine_segmental_planning_df$df %>%
+      mutate(adjustment = 0)
     
   })
+  
+  spine_simulation_planning_plot <- reactive({
+    spine_build_list <-  spine_build_list_reactivevalues$spine_build_list
+    
+    if(length(spine_build_list_reactivevalues$spine_build_list)>0){
+      alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
+      
+      preop_pelvic_tilt <- alignment_parameters_list$pelvic_tilt
+      
+      preop_c2pa <- alignment_parameters_list$c2pa
+      
+      preop_c2_tilt <- preop_c2pa - preop_pelvic_tilt
+      
+      if(length(spine_build_list)>0){
+        
+        if(any(spine_segmental_planning_df$df$adjustment != 0)){
+          
+          preop_geom <- geom_sf(data = st_sfc(spine_build_list$vert_geom_list), 
+                                color = "grey80",
+                                fill = "grey98", 
+                                alpha = 0.4)
+          
+          segmental_planning_df <- spine_segmental_planning_df$df %>%
+            mutate(sa_adjustment = adjustment) %>%
+            arrange(rev(spine_interspace))
+          
+          
+          
+          rotated_spine_list <- jh_rotate_spine_from_coordinates_by_segment_angles_function(spine_build_list = spine_build_list,
+                                                                                            sa_adjustment_df = segmental_planning_df, 
+                                                                                            spine_orientation = "left")
+          
+          
+          rotated_spine_coord_df <- tibble(spine_level = names(rotated_spine_list$vert_list)) %>%
+            mutate(index_position = row_number()) %>%
+            mutate(xy_coord = map(.x = index_position, .f = ~ rotated_spine_list$vert_list[[.x]]$vert_coord)) %>%
+            mutate(vert_point = map(.x = index_position, .f = ~ names(rotated_spine_list$vert_list[[.x]]$vert_coord))) %>%
+            unnest()  %>%
+            mutate(x = map(.x = xy_coord, .f = ~ .x[[1]])) %>%
+            mutate(y = map(.x = xy_coord, .f = ~ .x[[2]]))  %>%
+            unnest() %>%
+            select(spine_level, vert_point, x, y) %>%
+            distinct() 
+          # filter(vert_point != "centroid") %>%
+          # filter(vert_point != "s1_mid")
+          
+          
+          predicted_pt <- predict_postop_pt_function(postop_c2pa = rotated_spine_list$vpa_list$c2pa,
+                                                     preop_pt = preop_pelvic_tilt,
+                                                     preop_c2_tilt = preop_c2_tilt)
+          
+          pt_change <- preop_pelvic_tilt - predicted_pt
+          
+          pt_adjusted_rotated_spine_df <- rotate_spine_function(spine_df = rotated_spine_coord_df, angle_degrees = pt_change)
+          
+          
+          pt_adjusted_rotated_spine_plotting_df <- pt_adjusted_rotated_spine_df %>%
+            filter(vert_point != "centroid") %>%
+            filter(vert_point != "s1_mid")
+          
+          s1_mid_df <- pt_adjusted_rotated_spine_df %>%
+            filter(spine_level == "sacrum", vert_point == "s1_mid")
+          
+          s1_mid <- c(s1_mid_df$x, s1_mid_df$y)
+          
+          planned_vpa_lines_list <- jh_construct_vpa_lines_from_spine_coord_df_function(spine_coord_df = pt_adjusted_rotated_spine_df,
+                                                                                        fem_head_center_coord = c(0,0),
+                                                                                        s1_mid = s1_mid)  
+          
+          spine_levels <- unique(pt_adjusted_rotated_spine_df$spine_level)
+          
+          planned_spine_geoms_list <- map(.x = spine_levels, 
+                                          .f = ~ jh_construct_geoms_after_planning_function(vertebral_level_tibble = pt_adjusted_rotated_spine_df %>% filter(spine_level == .x),
+                                                                                            buffer_amount = 10*calibration_list$calibration_modifier))
+          
+          # names(planned_spine_geoms_list) <- spine_levels
+          
+          
+          planned_geom <-map(.x = planned_spine_geoms_list, 
+                             .f = ~ geom_sf(data = st_sfc(.x), 
+                                            color = "darkblue",
+                                            fill = "grey90", 
+                                            alpha = 0.8)
+          )
+          
+          
+          
+          plotting_lines_list <- planned_vpa_lines_list
+          
+          
+          
+        }else{
+          preop_geom <- geom_sf(data = st_sfc(spine_build_list$vert_geom_list), 
+                                color = "black",
+                                fill = "grey90", 
+                                alpha = 0.8)
+          planned_geom <- NULL
+          
+          plotting_lines_list <- spine_build_list$lines_list
+        }
+        
+        if(input$add_rod){
+          rod_coord_df <- construct_rod_coordinates_function(final_spine_coordinates_df = pt_adjusted_rotated_spine_df,
+                                                             uiv = input$rod_uiv)
+          
+          rod_geom <- geom_path(data = rod_coord_df, aes(x = x, y = y), color = "blue")
+        }else{
+          rod_geom <- NULL
+        }
+        
+        ggplot() +
+          preop_geom +
+          planned_geom +
+          # geom_path(data =  spine_build_list$spine_coord_df %>%
+          #             filter(vert_point %in% c("center", "centroid")), aes(x = x, y = y)) +
+          geom_sf(data = spine_build_list$fem_head_sf, 
+                  fill = "grey90") +
+          geom_sf(data = plotting_lines_list$l1pa, 
+                  color = "blue", linewidth = 1)+
+          # geom_sf(data = plotting_lines_list$t9pa, 
+          #         color = "orange") +
+          geom_sf(data = plotting_lines_list$t4pa, 
+                  color = "purple", linewidth = 1) +
+          geom_sf(data = plotting_lines_list$c2pa, 
+                  color = "darkgreen") +
+          # theme_void() +
+          rod_geom +
+          theme_minimal_grid()+
+          labs(title = "Preop Alignment") +
+          theme(
+            # axis.text = element_blank(),
+            # axis.title = element_blank(),
+            plot.title = element_text(
+              size = 16,
+              hjust = 0.5,
+              vjust = -0.5,
+              face = "bold.italic"
+            ),
+            plot.background = element_rect(fill = "transparent", colour = NA),
+            panel.background = element_rect(fill = "transparent", colour = NA)
+          )
+      }
+      
+    }
+  })
+  
+  
+  # rod_coord_df <- construct_rod_coordinates_function(final_spine_coordinates_df = pt_adjusted_rotated_spine_plotting_df,
+  #                                                    uiv = "T4")
+  # 
+  # rod_coord_df %>%
+  #   ggplot(aes(x = x, y = y))+
+  #   geom_path(data = rod_coord_df, aes(x = x, y = y), color = "blue") +
+  #   
+  #   coord_fixed() 
+  
+  
+  output$preop_spine_simulation_plot <- renderPlot({
+    spine_simulation_planning_plot()
+    
+  })
+  
+  # observeEvent(input$download_rod_template, ignoreInit = TRUE, ignoreNULL = TRUE, {
+  # 
+  #   # Define output file name
+  #   output_file <- "rod_plot_to_scale.pdf"
+  #   
+  #   
+  #   # Define dimensions (e.g., 100mm x 100mm for a 10cm x 10cm plot)
+  #   plot_width_mm <- max(rod_coord_df$x) - min(rod_coord_df$x)  # Width in mm
+  #   plot_height_mm <- max(rod_coord_df$y) - min(rod_coord_df$y) # Height in mm
+  #   
+  #   # Create the plot
+  #   # print_rod_plot
+  #   
+  #   print_rod_plot
+  #   
+  #   # Save as PDF with exact dimensions
+  #   ggsave(output_file,
+  #          plot = print_rod_plot,path = "test_rod_print", 
+  #          device = cairo_pdf, 
+  #          width = plot_width_mm / 10, 
+  #          height = plot_height_mm / 10, 
+  #          units = "cm", dpi = 300)
+  #   
+  #   # Print message
+  #   cat("PDF saved to", output_file)
+  #   
+  # })
+  
+  rod_plot_reactive_list <- reactiveValues(rod_plot = NULL, 
+                                           rod_coord_df = tibble())
+  
+  observeEvent(list(input$add_rod, input$rod_uiv), {
+    # rod_list <- list()
+    alignment_parameters_list <- reactiveValuesToList(alignment_parameters_reactivevalues_list)
+    
+    preop_pelvic_tilt <- alignment_parameters_list$pelvic_tilt
+    
+    preop_c2pa <- alignment_parameters_list$c2pa
+    
+    preop_c2_tilt <- preop_c2pa - preop_pelvic_tilt
+    
+    if(input$add_rod){
+      segmental_planning_df <- spine_segmental_planning_df$df %>%
+        mutate(sa_adjustment = adjustment) %>%
+        arrange(rev(spine_interspace))
+      
+      rotated_spine_list <- jh_rotate_spine_from_coordinates_by_segment_angles_function(spine_build_list = spine_build_list_reactivevalues$spine_build_list,
+                                                                                        sa_adjustment_df = segmental_planning_df,
+                                                                                        spine_orientation = "left")
+      
+      
+      rotated_spine_coord_df <- tibble(spine_level = names(rotated_spine_list$vert_list)) %>%
+        mutate(index_position = row_number()) %>%
+        mutate(xy_coord = map(.x = index_position, .f = ~ rotated_spine_list$vert_list[[.x]]$vert_coord)) %>%
+        mutate(vert_point = map(.x = index_position, .f = ~ names(rotated_spine_list$vert_list[[.x]]$vert_coord))) %>%
+        unnest()  %>%
+        mutate(x = map(.x = xy_coord, .f = ~ .x[[1]])) %>%
+        mutate(y = map(.x = xy_coord, .f = ~ .x[[2]]))  %>%
+        unnest() %>%
+        select(spine_level, vert_point, x, y) %>%
+        distinct()
+      
+      predicted_pt <- predict_postop_pt_function(postop_c2pa = rotated_spine_list$vpa_list$c2pa,
+                                                 preop_pt = preop_pelvic_tilt,
+                                                 preop_c2_tilt = preop_c2_tilt)
+      
+      pt_change <- preop_pelvic_tilt - predicted_pt
+      
+      pt_adjusted_rotated_spine_df <- rotate_spine_function(spine_df = rotated_spine_coord_df,
+                                                            angle_degrees = pt_change)
+      
+      rod_coord_df <- construct_rod_coordinates_function(final_spine_coordinates_df = pt_adjusted_rotated_spine_df,
+                                                         uiv = input$rod_uiv)
+      
+      rod_plot_reactive_list$rod_coord_df <- rod_coord_df
+      
+      rod_plot_reactive_list$rod_plot <- ggplot() +
+        geom_path(data = rod_plot_reactive_list$rod_coord_df, aes(x = x, y = y), color = "blue") +
+        theme_minimal_grid()
+    }
+    
+  })
+  
+  output$rod_table <- renderTable({
+    rod_plot_reactive_list$rod_coord_df
+  })
+  
+  output$download_rod_template <- downloadHandler(
+
+    filename = function() {
+      "rod_plot_to_scale.pdf"
+    },
+    
+    content = function(file) {
+      # Get the reactive plot
+
+      # Determine plot dimensions in mm
+      plot_width_mm <- max(rod_plot_reactive_list$rod_coord_df$x) - min(rod_plot_reactive_list$rod_coord_df$x)  # Width in mm
+      plot_height_mm <- max(rod_plot_reactive_list$rod_coord_df$y) - min(rod_plot_reactive_list$rod_coord_df$y) # Height in mm
+      
+      # Save as PDF with exact dimensions
+      ggsave(file, 
+             plot = rod_plot_reactive_list$rod_plot + theme_void(), 
+             device = cairo_pdf, 
+             width = plot_width_mm / 10,  # Convert mm to cm
+             height = plot_height_mm / 10, 
+             units = "cm", 
+             dpi = 300)
+    }
+  )
   
   
   
